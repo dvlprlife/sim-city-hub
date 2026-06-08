@@ -14,7 +14,7 @@
     "doctor": "node scripts/doctor.js",
     "start": "node --experimental-sqlite src/server.js",
     "dev": "node --watch --experimental-sqlite src/server.js",
-    "test": "node --test --experimental-sqlite \"test/*.test.js\"",
+    "test": "node --test --test-concurrency=1 --experimental-sqlite \"test/*.test.js\"",
     "lint": "eslint .",
     "client:dev": "npm --prefix client run dev",
     "client:build": "npm --prefix client run build",
