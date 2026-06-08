@@ -11,23 +11,22 @@ name: CodeQL
 # Guarded on the presence of tracked JS/TS source so it no-ops cleanly on the
 # pre-scaffold repo and activates automatically once code lands.
 
-# MANUAL-ONLY for now. CodeQL uploads results to GitHub code scanning, which on a
-# PRIVATE repo requires GitHub Advanced Security (it's free only on public repos).
-# This repo is private without GHAS, so the SARIF upload fails with "Code scanning
-# is not enabled for this repository" — the analysis runs fine, only the upload is
-# blocked. To re-enable automatic scanning once the repo is public OR code scanning
-# is turned on in Settings → Code security, uncomment the triggers below.
+# Automatic scanning is ON: CodeQL uploads results to GitHub code scanning, which
+# is free on PUBLIC repos. (On a private repo without GitHub Advanced Security the
+# SARIF upload fails with "Code scanning is not enabled" — the analysis still runs,
+# only the upload is blocked. If this repo ever goes private again without GHAS,
+# drop back to `workflow_dispatch:` only.)
 on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly, Monday ~05:23 UTC — off-peak, non-zero minute to dodge the
+    # top-of-hour scheduler spike; re-scans even on quiet weeks so newly
+    # published CodeQL queries surface latent issues.
+    - cron: '23 5 * * 1'
   workflow_dispatch:
-  # pull_request:
-  #   branches: [main]
-  # push:
-  #   branches: [main]
-  # schedule:
-  #   # Weekly, Monday ~05:23 UTC — off-peak, non-zero minute to dodge the
-  #   # top-of-hour scheduler spike; re-scans even on quiet weeks so newly
-  #   # published CodeQL queries surface latent issues.
-  #   - cron: '23 5 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
