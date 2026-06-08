@@ -7,52 +7,36 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
-- **Open the workspace in VS Code from the chat.** An "Open in VS Code" button in
-  the chat toolbar opens the selected building's folder in VS Code (via the `code`
-  CLI). It replaces the per-citizen "Opens in VS Code" setting, which was never
-  wired to anything and has been removed.
-- **City/building guidelines are now your local data.** The per-city and
-  per-building guideline files (the house rules appended to every agent's prompt)
-  move from the committed `.shared/guidelines/` to the seed→data pattern the rest
-  of the content already uses: samples ship in `seed/guidelines/`, and on first run
-  the hub copies them into the **gitignored `data/guidelines/`**, which it then
-  reads. Edit `data/guidelines/*.md` to set your own house rules — they stay local,
-  survive `git pull`, and aren't clobbered on reseed (a working copy is only created
-  when missing).
-- **One-command setup + a clean update path for self-hosting.** `npm run setup`
-  takes a fresh clone to ready-to-run (installs backend + frontend deps and builds
-  the UI); `npm run update` pulls the latest and rebuilds; `npm run doctor`
-  preflights the prerequisites (Node 22.5+, the Claude Code CLI, git). `launch.bat`
-  now preflights, builds the UI if it's missing, and warns when the Claude CLI
-  isn't on PATH. New **Deploy / self-host** section in the README. All runtime
-  state (`data/`, `.env`) stays gitignored, so `git pull` updates are clean.
-- **Handoffs fly across the screen.** When one citizen hands a task to another
-  (the "↪ Hand off" button), a little paper-plane courier now arcs across the
-  whole window carrying the receiving citizen's name — a quick, satisfying beat
-  that shows the work being passed along. It plays over any view and respects
-  `prefers-reduced-motion`.
-- **The city comes alive while agents work.** On the isometric views, buildings
-  now light their windows at dusk (in step with the street lamps), and a building
-  with a running agent glows warm and pulses — so you can spot active workspaces
-  at a glance, day or night. On the office floor a citizen shows a 🔧 bubble
-  naming the tool it's using; when its run finishes a ✓ (or ❗ on error) pops up
-  with a one-line summary and a coin floats off the desk. The status emotes track
-  runs started in this browser; all of it respects `prefers-reduced-motion`.
-- **The world map is a living landscape.** The City Map overview is now a
-  sky-and-rolling-hills scene — sun, drifting clouds, and trees — where each city
-  sits on the grass as a little cluster of its buildings, instead of floating on a
-  boxed isometric tile-grid.
-- **Weather and wildlife on the world map.** Birds drift across the sky (flapping
-  as they go) and a rain shower passes through now and then — slanted drops with a
-  soft grey dimming that fade in and ease off like real weather. Both respect
-  `prefers-reduced-motion`.
-- **Inside a city is a little town around a roundabout.** The Buildings view drops
-  the blocky tile-grid for a **rotary in the middle with offshoot roads**, with the
-  city's buildings **scattered across a grass field**, a tree on the rotary island,
-  chimney smoke, **street lamps that light at night**, **cars driving through the
-  rotary** (turning with the road) and **pedestrians strolling its sidewalk** — all
-  via CSS motion paths. Click a building to enter it, or the blank lot to add one.
-  All of it respects `prefers-reduced-motion`.
+## [0.3.0] - 2026-06-08
+
+The SimCity world comes alive — a landscape world map, a town around a roundabout,
+weather, and live agent activity — plus a City Hall task board, a Treasury HUD,
+one-command self-hosting, and an "Open in VS Code" button.
+
+- **The world became a living SimCity.** The City Map is now a sky-and-rolling-hills
+  landscape — sun, drifting clouds, **birds**, and **passing rain showers** — with each
+  city sitting on the grass as a cluster of its real buildings (no more boxed tile-grid).
+  Step into a city and it's a little town around a **roundabout**: offshoot roads,
+  buildings scattered across a field, chimney smoke, **street lamps that light at night**,
+  and **cars + pedestrians** following the roads. It also reacts to the work — buildings
+  **light their windows at dusk** and **glow/pulse while an agent runs**, and on the
+  office floor a citizen shows a 🔧 bubble for the tool it's using, then a ✓ (or ❗) with
+  a one-line summary and a coin floating off the desk when a run finishes. All of it
+  respects `prefers-reduced-motion`.
+- **Handoffs fly across the screen.** When one citizen hands a task to another (the
+  "↪ Hand off" button), a paper-plane courier arcs across the window carrying the
+  receiving citizen's name.
+- **Open the workspace in VS Code from the chat.** An "Open in VS Code" button in the
+  chat toolbar opens the selected building's folder via the `code` CLI.
+- **City/building guidelines are now your local data.** The per-city / per-building
+  guideline files (house rules appended to every agent's prompt) follow the seed→data
+  pattern: samples ship in `seed/guidelines/`, copied on first run into the gitignored
+  `data/guidelines/`. Edit them there — they stay local and survive `git pull`.
+- **One-command setup + a clean update path for self-hosting.** `npm run setup` takes a
+  fresh clone to ready-to-run; `npm run update` pulls the latest and rebuilds;
+  `npm run doctor` preflights prerequisites (Node 22.5+, the Claude Code CLI, git). New
+  **Deploy / self-host** section in the README; all runtime state (`data/`, `.env`) stays
+  gitignored, so `git pull` updates are clean.
 
 - **New: a City Hall work-order board (Tasks view).** The backlog tasks API now
   has a UI — a "Tasks" tab in the top bar. Queue work orders for a city with a
