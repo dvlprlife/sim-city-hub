@@ -1,4 +1,4 @@
-# 🏙 SimCity Agent Hub
+# 🏙 Simulated Agent City Hub
 
 [![Build](https://github.com/dvlprlife/sim-city-hub/actions/workflows/build.yml/badge.svg)](https://github.com/dvlprlife/sim-city-hub/actions/workflows/build.yml)
 [![CodeQL](https://github.com/dvlprlife/sim-city-hub/actions/workflows/codeql.yml/badge.svg)](https://github.com/dvlprlife/sim-city-hub/actions/workflows/codeql.yml)
@@ -6,7 +6,7 @@
 [![License: MIT](https://img.shields.io/github/license/dvlprlife/sim-city-hub)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen)](https://nodejs.org)
 
-A local-first, SimCity-themed hub for orchestrating Claude Code agents. Organize
+A local-first, Simulated Agent City-themed hub for orchestrating Claude Code agents. Organize
 your work as a city: **Cities** (domains) → **Buildings** (workspaces) → **People**
 (agents), each one click away.
 
@@ -26,13 +26,13 @@ Cities (domains)   →   Buildings (workspaces)   →   People (agents)
 
 The spatial UI is a visual reskin of "pick city → pick building → pick person."
 The orchestration underneath is plain HTTP + WebSockets — the backend is
-theme-agnostic; the SimCity theme lives entirely in two frontend views.
+theme-agnostic; the Simulated Agent City theme lives entirely in two frontend views.
 
 ## Stack
 
 - **Backend** — Node 22+ (built-in `node:sqlite`), Express + `ws`, `simple-git`.
   No bundler; run with `node --watch`.
-- **Frontend** — Vite + React 19. CSS-grid views in v1; isometric SimCity art is
+- **Frontend** — Vite + React 19. CSS-grid views in v1; isometric Simulated Agent City art is
   a later pass.
 
 > **Windows note:** keep the hub out of a OneDrive-synced folder — background

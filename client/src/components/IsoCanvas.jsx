@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 
 // Pan/zoom viewport for the isometric views. Wraps a sized "world" (whose px
 // width/height the caller computes from the iso layout) in a clipped viewport you
-// can drag to pan and scroll to zoom. Theme-neutral: it holds no SimCity strings;
+// can drag to pan and scroll to zoom. Theme-neutral: it holds no Simulated Agent City strings;
 // the ground look comes from `groundClass` (e.g. `iso-scene`).
 //
 // Click vs drag: a click only reaches a tile if the pointer didn't move past a

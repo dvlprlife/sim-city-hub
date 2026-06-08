@@ -46,7 +46,7 @@ From the issue, extract:
 2. **Acceptance Criteria** — is each acceptance criterion in the issue body satisfied by the diff?
 3. **Code quality** — bugs, missing edge cases, security issues, dead code, obvious style problems.
 4. **CLAUDE.md compliance** — branch is named `issue-{number}-*`, commit messages reference the issue and carry both lowercase `Co-authored-by:` trailers, and the load-bearing architectural rules in `CLAUDE.md` are upheld:
-   - **Backend stays theme-agnostic** — no SimCity theme strings leak into `src/`; the theme is confined to `CityMap.jsx`, `CityInterior.jsx`, the two `map/` files, the toolbar string, and CSS vars. Themed views honor the fixed prop contracts documented at the top of those components.
+   - **Backend stays theme-agnostic** — no Simulated Agent City theme strings leak into `src/`; the theme is confined to `CityMap.jsx`, `CityInterior.jsx`, the two `map/` files, the toolbar string, and CSS vars. Themed views honor the fixed prop contracts documented at the top of those components.
    - **MCP config is read-and-merged**, not replaced — `--mcp-config` REPLACES the global config, so the global `mcpServers` block must be merged in.
    - **`CLAUDECODE` is stripped** from the child env, and **`ANTHROPIC_API_KEY` is stripped** on a Max subscription, before spawning the CLI.
    - **System prompt and MCP config are passed as file paths**, not inline; the user prompt is piped via `stdin`.

@@ -157,9 +157,9 @@ These are the architectural ground rules the PR Reviewer should treat as load-be
 
 ### Theme discipline
 
-- **The backend is theme-agnostic.** The SimCity theme is confined to
+- **The backend is theme-agnostic.** The Simulated Agent City theme is confined to
   `client/src/components/CityMap.jsx`, `CityInterior.jsx`, the two `map/` files,
-  the toolbar string, and CSS vars. A PR that leaks SimCity strings into `src/`
+  the toolbar string, and CSS vars. A PR that leaks Simulated Agent City strings into `src/`
   is wrong. Themed views must honor the fixed prop contracts documented at the top
   of `CityMap.jsx` / `CityInterior.jsx`.
 

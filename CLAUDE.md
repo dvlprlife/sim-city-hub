@@ -1,4 +1,4 @@
-# CLAUDE.md — SimCity Agent Hub
+# CLAUDE.md — Simulated Agent City Hub
 
 Project conventions and load-bearing architectural rules. The agent pipeline
 (`agents/WORKFLOW.md`) treats this file as authoritative: the issue worker
@@ -9,9 +9,9 @@ load-bearing rules. (A fuller design document is maintained outside the repo.)
 
 ## What this is
 
-A local-first hub that orchestrates Claude Code agents behind a SimCity-themed
+A local-first hub that orchestrates Claude Code agents behind a Simulated Agent City-themed
 UI. The naming model is three nested layers: **Cities** (domains) → **Buildings**
-(workspaces) → **People** (agents). The backend is theme-agnostic; the SimCity
+(workspaces) → **People** (agents). The backend is theme-agnostic; the Simulated Agent City
 theme lives entirely in the frontend.
 
 ## Stack
@@ -44,7 +44,7 @@ data/                    gitignored WORKING data: data/cities.json + data/people
 These are the "clever parts." A PR that violates one is wrong even if it passes
 CI:
 
-- **The backend is theme-agnostic.** The SimCity theme touches ONLY
+- **The backend is theme-agnostic.** The Simulated Agent City theme touches ONLY
   `components/CityMap.jsx`, `components/CityInterior.jsx`, the two `map/` files,
   the toolbar string, and CSS vars. Never leak theme strings into `src/`.
 - **`--mcp-config` REPLACES the user's global MCP config — it does not extend

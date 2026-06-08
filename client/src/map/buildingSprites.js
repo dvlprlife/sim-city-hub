@@ -1,4 +1,4 @@
-// Themed catalogue of selectable building graphics. This is the SimCity theme's
+// Themed catalogue of selectable building graphics. This is the Simulated Agent City theme's
 // building art set — the ONLY place the building-type strings live. ConfigPanel
 // imports this to populate its graphic picker (it hardcodes none itself), and the
 // map views import it to render each building's chosen graphic.
