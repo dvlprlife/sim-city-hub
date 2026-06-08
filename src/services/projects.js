@@ -106,10 +106,6 @@ export function validateManifest(input) {
     throw new Error(`manifest.effort must be one of ${MANIFEST_EFFORTS.join(', ')}`);
   }
 
-  if (input.opensInVSCode !== undefined && typeof input.opensInVSCode !== 'boolean') {
-    throw new Error('manifest.opensInVSCode must be a boolean');
-  }
-
   const mcps = input.mcps ?? [];
   if (!Array.isArray(mcps)) throw new Error('manifest.mcps must be an array');
 
@@ -120,7 +116,6 @@ export function validateManifest(input) {
     description: str('description'),
     defaultModel,
     effort,
-    opensInVSCode: input.opensInVSCode ?? false,
     mcps,
   };
 }

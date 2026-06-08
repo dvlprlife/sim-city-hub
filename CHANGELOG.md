@@ -7,6 +7,10 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **Open the workspace in VS Code from the chat.** An "Open in VS Code" button in
+  the chat toolbar opens the selected building's folder in VS Code (via the `code`
+  CLI). It replaces the per-citizen "Opens in VS Code" setting, which was never
+  wired to anything and has been removed.
 - **City/building guidelines are now your local data.** The per-city and
   per-building guideline files (the house rules appended to every agent's prompt)
   move from the committed `.shared/guidelines/` to the seed→data pattern the rest

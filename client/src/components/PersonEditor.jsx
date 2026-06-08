@@ -4,7 +4,7 @@ import { useFocusTrap } from '../hooks/useFocusTrap.js';
 import { citizenAvatars, DEFAULT_AVATAR, avatarFor } from '../map/citizenAvatars.js';
 import { MODEL_GROUPS, MODEL_KEYS, modelLabel, EFFORT_KEYS, effortOptions, effortLabel } from '../lib/models.js';
 import IsoPerson from './IsoPerson.jsx';
-const BLANK = { name: '', job: '', icon: DEFAULT_AVATAR, description: '', defaultModel: 'sonnet', effort: 'auto', opensInVSCode: false, prompt: '' };
+const BLANK = { name: '', job: '', icon: DEFAULT_AVATAR, description: '', defaultModel: 'sonnet', effort: 'auto', prompt: '' };
 
 // Modal editor/creator for a Person's manifest.json + prompt.md. Reachable from
 // the PersonPicker. The People library is SHARED across cities, so an edit (or a
@@ -43,7 +43,7 @@ export default function PersonEditor({ personId, createMode = false, cityName = 
         setForm({
           name: m.name ?? '', job: m.job ?? '', icon: citizenAvatars.some((a) => a.key === m.icon) ? m.icon : DEFAULT_AVATAR,
           description: m.description ?? '', defaultModel: mdl, effort: eff,
-          opensInVSCode: !!m.opensInVSCode, prompt: doc.prompt ?? '',
+          prompt: doc.prompt ?? '',
         });
         setMcpsText(JSON.stringify(m.mcps ?? [], null, 2));
       })
@@ -81,7 +81,7 @@ export default function PersonEditor({ personId, createMode = false, cityName = 
     }
     const manifest = {
       name: form.name, job: form.job, icon: form.icon, description: form.description,
-      defaultModel: form.defaultModel, effort: form.effort, opensInVSCode: form.opensInVSCode, mcps,
+      defaultModel: form.defaultModel, effort: form.effort, mcps,
     };
     setSaving(true);
     setSaveError(null);
@@ -206,10 +206,6 @@ export default function PersonEditor({ personId, createMode = false, cityName = 
             <label className="field">
               <span>Description</span>
               <input value={form.description} onChange={(e) => set('description', e.target.value)} />
-            </label>
-            <label className="field-check">
-              <input type="checkbox" checked={form.opensInVSCode} onChange={(e) => set('opensInVSCode', e.target.checked)} />
-              <span>Opens in VS Code</span>
             </label>
             <label className="field">
               <span>MCPs (JSON array)</span>

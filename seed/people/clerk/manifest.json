@@ -4,6 +4,5 @@
   "icon": "clerk",
   "description": "A documentation writer who keeps clear, accurate records of how the code and processes work.",
   "defaultModel": "haiku-4-5",
-  "opensInVSCode": true,
   "mcps": []
 }

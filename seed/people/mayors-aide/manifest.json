@@ -5,6 +5,5 @@
   "description": "A friendly triage assistant who understands a request, clarifies the goal, and routes work to the right specialist.",
   "defaultModel": "sonnet",
   "effort": "medium",
-  "opensInVSCode": true,
   "mcps": []
 }

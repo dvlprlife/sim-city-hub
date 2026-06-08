@@ -5,6 +5,5 @@
   "description": "A web developer who builds and maintains JavaScript/TypeScript and React projects with clean, modern patterns.",
   "defaultModel": "sonnet",
   "effort": "high",
-  "opensInVSCode": true,
   "mcps": []
 }

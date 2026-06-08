@@ -111,7 +111,8 @@ export default function App() {
 
   // The conversation shown for the selected person (persists across navigation).
   const current = conv.get(personId);
-  const buildingName = buildings.find((b) => b.id === buildingId)?.name;
+  const building = buildings.find((b) => b.id === buildingId);
+  const buildingName = building?.name;
 
   // Live agent-todos for the shown run (active while running, last run after it
   // ends). Seed from the API on change; live todo:update events keep it fresh.
@@ -188,6 +189,18 @@ export default function App() {
     setTimeout(() => setHandoffFx((fx) => (fx && fx.id === id ? null : fx)), 2800);
     sendPrompt(h.prompt, h.targetPersonId);
   }, [sendPrompt, tree.allPeople]);
+
+  // Open the current building's workspace folder in VS Code (the backend runs
+  // `code <folder>`). Best-effort — surface a note in the thread if it can't.
+  const onOpenVSCode = useCallback(async () => {
+    if (!cityId || !buildingId) return;
+    try {
+      const res = await api.openWorkspace({ cityId, buildingId });
+      if (!res?.opened) conv.pushNote(personId, `⚠ Couldn't open VS Code: ${res?.error || 'unknown error'}`);
+    } catch (e) {
+      conv.pushNote(personId, `⚠ Couldn't open VS Code: ${e.message}`);
+    }
+  }, [cityId, buildingId, personId, conv]);
 
   // Spawn an agent on a work order: navigate to the task's citizen so the run is
   // visible and streams into that thread, fire the spawn with the task's own
@@ -315,6 +328,13 @@ export default function App() {
 
           {person && (
             <div className="chat">
+              <div className="chat-toolbar">
+                {buildingName && <span className="chat-where" title={building?.absolutePath || ''}>📂 {buildingName}</span>}
+                <button className="open-vscode" onClick={onOpenVSCode} disabled={!buildingId}
+                  title="Open this building's workspace in VS Code">
+                  Open in VS Code
+                </button>
+              </div>
               <TodoPanel todos={todos.todosFor(panelRunId)} />
               <div className="messages" ref={scrollRef}>
                 {current.messages.map((m) => (

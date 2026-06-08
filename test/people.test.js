@@ -32,14 +32,13 @@ const base = {
   icon: 'developer',
   description: 'Builds and maintains the project.',
   defaultModel: 'sonnet',
-  opensInVSCode: true,
   mcps: [],
 };
 
 test('validateManifest accepts a well-formed manifest and normalizes keys', () => {
   const out = validateManifest({ ...base, surprise: 'dropped' });
   assert.deepEqual(Object.keys(out), [
-    'name', 'job', 'icon', 'description', 'defaultModel', 'effort', 'opensInVSCode', 'mcps',
+    'name', 'job', 'icon', 'description', 'defaultModel', 'effort', 'mcps',
   ]);
   assert.equal(out.name, 'Sample Developer');
   assert.equal(out.surprise, undefined); // unknown keys are not carried through
@@ -69,16 +68,14 @@ test('validateManifest requires a non-empty name and job', () => {
   assert.throws(() => validateManifest({ ...base, job: undefined }), /job is required/);
 });
 
-test('validateManifest rejects a non-array mcps and non-boolean opensInVSCode', () => {
+test('validateManifest rejects a non-array mcps', () => {
   assert.throws(() => validateManifest({ ...base, mcps: 'nope' }), /mcps must be an array/);
-  assert.throws(() => validateManifest({ ...base, opensInVSCode: 'yes' }), /opensInVSCode must be a boolean/);
 });
 
-test('validateManifest defaults optional fields (model, mcps, opensInVSCode)', () => {
+test('validateManifest defaults optional fields (model, mcps)', () => {
   const out = validateManifest({ name: 'X', job: 'Y' });
   assert.equal(out.defaultModel, 'sonnet');
   assert.deepEqual(out.mcps, []);
-  assert.equal(out.opensInVSCode, false);
   assert.equal(out.icon, '');
 });
 
