@@ -5,6 +5,5 @@
   "description": "A writer who drafts and edits blog posts and markdown content in a clear, engaging voice.",
   "defaultModel": "sonnet",
   "effort": "medium",
-  "opensInVSCode": true,
   "mcps": []
 }

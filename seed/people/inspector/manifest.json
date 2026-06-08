@@ -5,6 +5,5 @@
   "description": "A meticulous code reviewer who checks changes for correctness, convention, and safety before they ship.",
   "defaultModel": "sonnet",
   "effort": "high",
-  "opensInVSCode": true,
   "mcps": []
 }

@@ -5,6 +5,5 @@
   "description": "A security auditor who reviews changes for access-control, data-exposure, secret-handling, and integration risks.",
   "defaultModel": "opus-4-8",
   "effort": "max",
-  "opensInVSCode": true,
   "mcps": []
 }

@@ -5,6 +5,5 @@
   "description": "A thorough researcher who investigates questions across sources and synthesizes clear, well-supported answers.",
   "defaultModel": "opus-4-8",
   "effort": "xhigh",
-  "opensInVSCode": true,
   "mcps": []
 }

@@ -5,6 +5,5 @@
   "description": "A developer who builds and maintains the codebase, matching its existing conventions and keeping changes small and reviewable.",
   "defaultModel": "sonnet",
   "effort": "high",
-  "opensInVSCode": true,
   "mcps": []
 }

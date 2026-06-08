@@ -4,6 +4,5 @@
   "icon": "translator",
   "description": "A localization specialist who translates the project's user-facing strings accurately and consistently across locales.",
   "defaultModel": "haiku-4-5",
-  "opensInVSCode": true,
   "mcps": []
 }
