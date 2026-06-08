@@ -1,5 +1,11 @@
 # 🏙 SimCity Agent Hub
 
+[![Build](https://github.com/dvlprlife/sim-city-hub/actions/workflows/build.yml/badge.svg)](https://github.com/dvlprlife/sim-city-hub/actions/workflows/build.yml)
+[![CodeQL](https://github.com/dvlprlife/sim-city-hub/actions/workflows/codeql.yml/badge.svg)](https://github.com/dvlprlife/sim-city-hub/actions/workflows/codeql.yml)
+[![Release](https://img.shields.io/github/v/release/dvlprlife/sim-city-hub)](https://github.com/dvlprlife/sim-city-hub/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/dvlprlife/sim-city-hub)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D22.5-brightgreen)](https://nodejs.org)
+
 A local-first, SimCity-themed hub for orchestrating Claude Code agents. Organize
 your work as a city: **Cities** (domains) → **Buildings** (workspaces) → **People**
 (agents), each one click away.
