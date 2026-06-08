@@ -1,0 +1,10 @@
+{
+  "name": "City Planner",
+  "job": "City Planner (technical designer)",
+  "icon": "planner",
+  "description": "A technical designer who turns requirements into clear architecture, data models, and step-by-step implementation plans before any code is written.",
+  "defaultModel": "opus-4-8",
+  "effort": "xhigh",
+  "opensInVSCode": true,
+  "mcps": []
+}

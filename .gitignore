@@ -1,0 +1,51 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+client/dist/
+out/
+
+# Local SQLite database (created at runtime by node:sqlite)
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+*.db-shm
+*.db-wal
+
+# All runtime/working data lives here — the working cities.json + people/ library
+# + the SQLite DB, seeded from seed/ on first run. NEVER committed (real workspace
+# paths, runtime-created citizens, run history). Edit seed/ to change the samples.
+/data/
+
+# Defensive: the live catalogue + library moved to data/, so these should never
+# exist at the repo root — but ignore them anyway so a stray copy left by an older
+# checkout/process can't be accidentally committed. (seed/ is unaffected.)
+/cities.json
+/people/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Runtime temp (merged MCP configs are written to %TEMP%, but just in case)
+hub-mcp-*.json
+
+# Editor / tooling
+.claude/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Local-only notes and drafts (never committed)
+posts/
+CONTEXT.md
+GETTING_STARTED.md
+
+# Local-only design/meta docs (kept on disk, not shipped). The "Build Your Own"
+# blueprint + bootstrap prompt for this type of project lives here so it can be
+# maintained without committing it. CLAUDE.md is the authoritative in-repo summary.
+.meta/

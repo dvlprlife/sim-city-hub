@@ -1,0 +1,61 @@
+name: Build
+
+# Repurposed from the AL-EventLens / Markdown-Forge VS Code-extension CI for
+# this project's stack: a Node 22 backend (Express + ws + built-in node:sqlite)
+# and a Vite + React 19 frontend. Node 22 is REQUIRED — node:sqlite is built in
+# from v22. Steps are guarded on lockfile presence so CI stays green on the
+# pre-scaffold repo and activates automatically once the code lands.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        # Linux is the likely deploy target; Windows is the primary dev target
+        # (this hub is Windows-first). macOS dropped — not a target.
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+          cache: 'npm'
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+
+      # ----- Backend (root: Express + ws + simple-git, built-in node:sqlite) -----
+      - name: Install backend dependencies
+        if: hashFiles('package-lock.json') != ''
+        run: npm ci
+      - name: Lint (backend + frontend)
+        if: hashFiles('package-lock.json') != ''
+        run: npm run lint --if-present
+      - name: Type-check backend
+        if: hashFiles('package-lock.json') != ''
+        run: npm run typecheck --if-present
+      - name: Backend tests
+        if: hashFiles('package-lock.json') != ''
+        run: npm test --if-present
+
+      # ----- Frontend (client/: Vite + React 19) -----
+      - name: Install frontend dependencies
+        if: hashFiles('client/package-lock.json') != ''
+        run: npm --prefix client ci
+      - name: Frontend tests
+        if: hashFiles('client/package-lock.json') != ''
+        run: npm --prefix client test
+      - name: Build frontend
+        if: hashFiles('client/package-lock.json') != ''
+        run: npm --prefix client run build

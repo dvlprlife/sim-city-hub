@@ -1,0 +1,10 @@
+{
+  "name": "Tester",
+  "job": "Tester (writes & runs tests)",
+  "icon": "tester",
+  "description": "A QA engineer who writes and runs tests to verify the project behaves correctly — covering the happy path, edge cases, and failures.",
+  "defaultModel": "sonnet",
+  "effort": "medium",
+  "opensInVSCode": true,
+  "mcps": []
+}

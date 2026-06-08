@@ -1,0 +1,10 @@
+{
+  "name": "Building Inspector",
+  "job": "Building Inspector (code review)",
+  "icon": "inspector",
+  "description": "A meticulous code reviewer who checks changes for correctness, convention, and safety before they ship.",
+  "defaultModel": "sonnet",
+  "effort": "high",
+  "opensInVSCode": true,
+  "mcps": []
+}

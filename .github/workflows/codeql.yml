@@ -1,0 +1,78 @@
+name: CodeQL
+
+# Static security analysis for the hub's JavaScript/JSX source. The backend
+# spawns the Claude Code CLI as a child process, builds command lines and MCP
+# config files from request input, runs an Express + WebSocket server, and
+# shells out to git via simple-git — so the extended security queries (command
+# injection, argument injection, path construction, ReDoS-adjacent regex, unsafe
+# deserialization) are a worthwhile backstop. Separate from build.yml — purely
+# additive, single Linux runner (analysis is OS-independent).
+#
+# Guarded on the presence of tracked JS/TS source so it no-ops cleanly on the
+# pre-scaffold repo and activates automatically once code lands.
+
+# MANUAL-ONLY for now. CodeQL uploads results to GitHub code scanning, which on a
+# PRIVATE repo requires GitHub Advanced Security (it's free only on public repos).
+# This repo is private without GHAS, so the SARIF upload fails with "Code scanning
+# is not enabled for this repository" — the analysis runs fine, only the upload is
+# blocked. To re-enable automatic scanning once the repo is public OR code scanning
+# is turned on in Settings → Code security, uncomment the triggers below.
+on:
+  workflow_dispatch:
+  # pull_request:
+  #   branches: [main]
+  # push:
+  #   branches: [main]
+  # schedule:
+  #   # Weekly, Monday ~05:23 UTC — off-peak, non-zero minute to dodge the
+  #   # top-of-hour scheduler spike; re-scans even on quiet weeks so newly
+  #   # published CodeQL queries surface latent issues.
+  #   - cron: '23 5 * * 1'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  actions: read
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze (javascript-typescript)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Detect JS/TS source
+        id: detect
+        shell: bash
+        run: |
+          if git ls-files '*.js' '*.jsx' '*.ts' '*.tsx' '*.mjs' '*.cjs' | grep -q .; then
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=false" >> "$GITHUB_OUTPUT"
+            echo "No tracked JS/TS source yet — skipping CodeQL analysis."
+          fi
+      - name: Setup Node
+        if: steps.detect.outputs.found == 'true'
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+      - name: Initialize CodeQL
+        if: steps.detect.outputs.found == 'true'
+        uses: github/codeql-action/init@v4
+        with:
+          # Single CodeQL language covering both JS and TS — do NOT split.
+          languages: javascript-typescript
+          queries: security-extended
+      # CodeQL's JS/TS extractor analyzes source directly; installing deps just
+      # helps module resolution. Guarded so it skips before package-lock exists.
+      - name: Install dependencies
+        if: steps.detect.outputs.found == 'true' && hashFiles('package-lock.json') != ''
+        run: npm ci
+      - name: Perform CodeQL Analysis
+        if: steps.detect.outputs.found == 'true'
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:javascript-typescript"

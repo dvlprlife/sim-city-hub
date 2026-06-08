@@ -1,0 +1,35 @@
+{
+  "name": "simcity-agent-hub",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-first, SimCity-themed hub for orchestrating Claude Code agents.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.js",
+    "update": "node scripts/update.js",
+    "doctor": "node scripts/doctor.js",
+    "start": "node --experimental-sqlite src/server.js",
+    "dev": "node --watch --experimental-sqlite src/server.js",
+    "test": "node --test --experimental-sqlite \"test/*.test.js\"",
+    "lint": "eslint .",
+    "client:dev": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build",
+    "build": "npm --prefix client run build"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "simple-git": "^3.27.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.6.0"
+  }
+}

@@ -1,0 +1,760 @@
+/* SimCity palette — greens, roads, zoning. v1 is CSS grids; isometric art later. */
+:root {
+  --grass: #3f7d3a;
+  --grass-dark: #2c5a28;
+  --road: #3a3f44;
+  --road-light: #4b5258;
+  --zone-res: #4c9a4c;
+  --zone-com: #2f6fb0;
+  --zone-ind: #c9a227;
+  --ink: #11160f;
+  --paper: #f4f6f0;
+  --panel: #1c241a;
+  --panel-2: #243021;
+  --text: #e8efe2;
+  --muted: #9fb39a;
+  --accent: #ffd23f;
+  --danger: #d0453b;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: var(--grass-dark);
+  color: var(--text);
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 220px 1fr 300px;
+  /* minmax(0, 1fr): one viewport-tall row whose min is 0, so the columns are
+     capped at the viewport and their content scrolls internally instead of
+     forcing the row taller (which clips under .app's overflow:hidden). */
+  grid-template-rows: minmax(0, 1fr);
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* ---- Sidebar ---- */
+.sidebar { background: var(--panel); border-right: 3px solid var(--road); overflow-y: auto; }
+.sidebar-head, .picker-head, .history-head {
+  padding: 12px 14px; font-weight: 700; text-transform: uppercase;
+  font-size: 12px; letter-spacing: 0.08em; color: var(--muted);
+}
+.city-list { list-style: none; margin: 0; padding: 0; }
+.city-list button {
+  width: 100%; text-align: left; padding: 10px 14px; background: none; border: none;
+  color: var(--text); cursor: pointer; display: flex; flex-direction: column; gap: 2px;
+  border-left: 4px solid transparent;
+}
+.city-list button:hover { background: var(--panel-2); }
+.city-list button.active { background: var(--panel-2); border-left-color: var(--accent); }
+.city-name { font-weight: 600; }
+.city-meta { font-size: 11px; color: var(--muted); }
+
+/* ---- Main ---- */
+.main { display: flex; flex-direction: column; min-width: 0; background: var(--grass); }
+.topbar {
+  display: flex; align-items: center; gap: 12px; padding: 10px 16px;
+  background: var(--panel); border-bottom: 3px solid var(--road);
+}
+.brand { font-weight: 800; font-size: 16px; }
+.crumbs { display: flex; gap: 6px; align-items: center; color: var(--muted); font-size: 13px; }
+.crumbs button { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 13px; padding: 2px 4px; border-radius: 5px; }
+.crumbs button:hover { background: var(--panel-2); }
+.crumb-home { font-weight: 700; }
+.crumb-sep { color: var(--muted); opacity: 0.7; }
+.crumb-current { color: var(--text); font-weight: 600; padding: 0 4px; }
+.topbar .ws { margin-left: auto; font-size: 11px; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; }
+.ws-open { background: var(--zone-res); color: #062; }
+.ws-closed, .ws-connecting { background: var(--danger); color: #fff; }
+.topbar > button { background: var(--road-light); color: var(--text); border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; }
+
+.content { flex: 1; min-height: 0; overflow-y: auto; padding: 18px; }
+.view-title { margin: 0 0 4px; }
+.view-sub { margin: 0 0 16px; color: var(--ink); opacity: 0.7; }
+.error { background: var(--danger); color: #fff; padding: 10px 14px; border-radius: 6px; margin-bottom: 14px; }
+
+/* ---- City Map / Buildings / Interior (isometric) ---- */
+/* Pan/zoom viewport: a clipped window you drag/scroll; the sized "world" inside
+   is translated/scaled. */
+.iso-canvas {
+  position: relative; width: 100%; height: clamp(360px, 70vh, 820px);
+  margin: 10px 0 4px; overflow: hidden; border-radius: 14px;
+  background: var(--grass-dark); border: 1px solid var(--road);
+  cursor: grab; touch-action: none; user-select: none;
+}
+.iso-canvas:active { cursor: grabbing; }
+.iso-canvas-inner { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+/* Day/night cycle: a tint over the whole scene that loops day → dusk → night →
+   dawn. Above the (transformed) scene, below the controls; never blocks clicks. */
+.iso-night { position: absolute; inset: 0; pointer-events: none; z-index: 5; animation: daynight 100s linear infinite; }
+@keyframes daynight {
+  0%, 12% { background: rgba(10, 20, 60, 0); }      /* midday */
+  30% { background: rgba(255, 150, 70, 0.16); }     /* dusk */
+  45%, 60% { background: rgba(12, 18, 55, 0.52); }  /* night */
+  78% { background: rgba(255, 175, 90, 0.14); }     /* dawn */
+  100% { background: rgba(10, 20, 60, 0); }         /* back to midday */
+}
+@media (prefers-reduced-motion: reduce) { .iso-night { animation: none; background: rgba(10, 20, 60, 0); } }
+
+/* ---- Rotary town (CityBuildings): grass field + a roundabout with offshoots ---- */
+/* A soft green field so the scene reads as open ground, not a boxed plate. */
+.iso-canvas.iso-field { background: radial-gradient(ellipse 130% 108% at 50% 42%, #5da152 0%, #4c8b41 46%, #3a6b32 82%, #2f5a2b 100%); }
+/* Roads: a wide soft shoulder that blends into the grass + the asphalt on top.
+   The same geometry the cars (and the ped sidewalk loop) travel. */
+.town-roads { position: absolute; top: 0; left: 0; pointer-events: none; overflow: visible; z-index: 1; }
+.town-roads path, .town-roads line, .town-roads circle { stroke-linecap: round; stroke-linejoin: round; }
+.road-shoulder { fill: none; stroke: #6f9650; stroke-width: 48; opacity: 0.45; }
+.road-asphalt { fill: none; stroke: #585f66; stroke-width: 32; }
+.rotary-island { fill: #5a9c4e; stroke: rgba(0,0,0,0.12); stroke-width: 2; }
+.town-tree { position: absolute; width: 46px; height: auto; transform: translate(-50%, -82%); pointer-events: none; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.4)); }
+.town-island-tree { width: 38px; }
+.town-bush { position: absolute; width: 26px; height: 17px; transform: translate(-50%, -68%); pointer-events: none; border-radius: 50% 50% 46% 46%; background: radial-gradient(circle at 42% 34%, #63b657, #3f8a3a); box-shadow: 0 2px 2px rgba(0,0,0,0.22); }
+
+/* Cars + pedestrians follow the road via CSS motion paths (offset-path set inline
+   to the same SVG path). Cars turn with the road; pedestrians stay upright. */
+.town-car { position: absolute; top: 0; left: 0; width: 22px; height: 12px; z-index: 60; offset-rotate: auto; offset-anchor: 50% 50%; animation: road-travel var(--dur, 16s) linear var(--delay, 0s) infinite; }
+.town-car::before { content: ''; position: absolute; inset: 0; background: currentColor; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.45); }
+.town-car-top { position: absolute; left: 5px; right: 6px; top: 2.5px; bottom: 2.5px; background: rgba(220,235,255,0.7); border-radius: 2px; }
+.town-ped { position: absolute; top: 0; left: 0; z-index: 61; offset-rotate: 0deg; offset-anchor: 50% 88%; animation: road-travel var(--dur, 46s) linear var(--delay, 0s) infinite; }
+.town-ped .iso-person { animation: ped-walk 0.7s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes road-travel { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+@media (prefers-reduced-motion: reduce) { .town-car, .town-ped, .town-ped .iso-person { animation: none; } }
+
+/* "Add building" lot on the field. */
+.town-add-art { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); width: 78px; height: 64px; border: 2px dashed rgba(255,255,255,0.5); border-radius: 10px; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+.town-add-plus { font-size: 30px; font-weight: 800; color: rgba(255,255,255,0.8); }
+.town-add:hover .town-add-art { border-color: var(--accent); }
+.town-add:hover .town-add-plus { color: var(--accent); }
+
+/* ---- World City Map as a landscape (no boxed iso plate) ----
+   A sky + rolling hills + a grassy foreground; cities sit on the grass as little
+   clusters of their building sprites. Day/night tint + drifting clouds for life. */
+.landscape {
+  position: relative; width: 100%; height: clamp(360px, 70vh, 820px);
+  margin: 10px 0 4px; overflow: hidden; border-radius: 14px; border: 1px solid var(--road);
+  background: linear-gradient(180deg, #7fbce6 0%, #a6d4ef 30%, #cfe9f1 48%, #e6f3ec 54%, #e6f3ec 100%);
+}
+.ls-ground { position: absolute; left: 0; right: 0; bottom: 0; height: 48%; z-index: 1; background: linear-gradient(180deg, #74b25d 0%, #5b9a4a 55%, #4c8740 100%); box-shadow: inset 0 3px 6px rgba(255,255,255,0.18); }
+.ls-hill { position: absolute; border-radius: 50% 50% 0 0; z-index: 0; }
+.ls-hill-back { left: -6%; bottom: 44%; width: 56%; height: 22%; background: linear-gradient(#84bb70, #6fa75d); }
+.ls-hill-mid { right: -10%; bottom: 45%; width: 62%; height: 28%; background: linear-gradient(#79b266, #629d52); }
+.ls-hill-front { left: 24%; bottom: 45%; width: 52%; height: 20%; background: linear-gradient(#8cc079, #74ac62); }
+.ls-sun { position: absolute; top: 9%; right: 13%; width: 46px; height: 46px; border-radius: 50%; z-index: 0; background: radial-gradient(circle, #fff4b8 0%, #ffd23f 70%, #ffc21f 100%); box-shadow: 0 0 34px rgba(255,210,80,0.55); }
+.ls-cloud { position: absolute; z-index: 0; height: 17px; background: rgba(255,255,255,0.92); border-radius: 20px; box-shadow: 17px 4px 0 -2px rgba(255,255,255,0.92), -15px 5px 0 -3px rgba(255,255,255,0.92); }
+.ls-cloud-a { top: 13%; left: 12%; width: 56px; animation: cloud-drift 120s linear infinite; }
+.ls-cloud-b { top: 22%; left: 52%; width: 44px; animation: cloud-drift 160s linear infinite; animation-delay: -70s; }
+@keyframes cloud-drift { from { transform: translateX(-70px); } to { transform: translateX(560px); } }
+
+.ls-tree { position: absolute; z-index: 1; height: auto; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.3)); pointer-events: none; }
+.ls-tree-a { bottom: 31%; left: 9%; width: 36px; }
+.ls-tree-b { bottom: 11%; right: 9%; width: 54px; }
+.ls-tree-c { bottom: 24%; left: 71%; width: 42px; }
+.ls-cities { position: absolute; left: 0; right: 0; bottom: 11%; z-index: 2; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-end; gap: 30px 54px; padding: 0 30px; }
+.ls-city { background: none; border: none; cursor: pointer; color: var(--text); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; margin-bottom: var(--lift, 0); }
+.ls-city-art { position: relative; display: flex; align-items: flex-end; justify-content: center; }
+.ls-mini { width: 76px; height: auto; margin: 0 -17px; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.35)); transition: transform 0.12s ease; }
+.ls-city:hover .ls-mini { transform: translateY(-4px); }
+.ls-empty { font-size: 32px; opacity: 0.6; }
+.ls-shadow { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); width: 92px; height: 18px; border-radius: 50%; z-index: -1; background: radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%); }
+.ls-name { margin-top: 8px; font-size: 13px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.75); }
+.ls-sub { font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); text-shadow: 0 1px 2px rgba(0,0,0,0.75); }
+/* Windows lit at night / brighter when a city has a running agent (reuses the
+   lamp-glow + window-busy keyframes). */
+.ls-glow { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); width: 96px; height: 60px; pointer-events: none; border-radius: 50%; opacity: 0; animation: lamp-glow 100s linear infinite; background: radial-gradient(ellipse 58% 56% at 50% 62%, rgba(255,205,110,0.6) 0%, rgba(255,184,80,0.26) 48%, transparent 72%); }
+.ls-city.running .ls-glow { animation: window-busy 1.6s ease-in-out infinite; background: radial-gradient(ellipse 62% 58% at 50% 58%, rgba(255,233,156,1) 0%, rgba(255,196,84,0.6) 42%, transparent 76%); }
+.ls-add-art { width: 82px; height: 66px; border: 2px dashed rgba(255,255,255,0.6); border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+.ls-add-plus { font-size: 30px; font-weight: 800; color: rgba(255,255,255,0.82); }
+.ls-city.ls-add:hover .ls-add-art { border-color: var(--accent); }
+.ls-city.ls-add:hover .ls-add-plus { color: var(--accent); }
+.ls-city:focus-visible { outline: none; }
+.ls-city:focus-visible .ls-name { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.landscape-night { position: absolute; inset: 0; z-index: 5; pointer-events: none; animation: daynight 100s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .ls-cloud { animation: none; }
+  .ls-glow { animation: none; opacity: 0; }
+  .ls-city.running .ls-glow { animation: none; opacity: 0.9; }
+  .landscape-night { animation: none; background: rgba(10, 20, 60, 0); }
+}
+
+/* Wildlife: a few birds drifting across the sky. Each is a zero-size span whose
+   child <i> draws two ⌒ wings (top-border arcs) that flap (scaleY); the parent
+   glides edge-to-edge by animating `left`, so it never pops in mid-scene. */
+.ls-bird { position: absolute; z-index: 1; pointer-events: none; animation: bird-fly var(--dur, 72s) linear var(--delay, 0s) infinite; }
+.ls-bird i { display: block; position: relative; width: 16px; height: 7px; animation: bird-flap 0.85s ease-in-out infinite; }
+.ls-bird i::before, .ls-bird i::after { content: ''; position: absolute; top: 0; width: 9px; height: 7px; box-sizing: border-box; border-top: 2px solid rgba(58, 68, 92, 0.78); border-radius: 50% 50% 0 0; }
+.ls-bird i::before { left: 0; }
+.ls-bird i::after { right: 0; }
+@keyframes bird-fly { from { left: -4%; } to { left: 104%; } }
+@keyframes bird-flap { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(0.42); } }
+
+/* A passing rain shower over the landscape (in front of the towns, behind the
+   night tint). Drops fall on their own loops; the whole layer fades in/out over
+   a long cycle (+ a faint grey wash that dims the scene) so weather comes & goes. */
+.ls-rain { position: absolute; inset: 0; z-index: 3; pointer-events: none; overflow: hidden; opacity: 0; background: linear-gradient(180deg, rgba(86, 104, 134, 0.22), rgba(86, 104, 134, 0.05)); animation: rain-shower 72s ease-in-out infinite; }
+.ls-rain b { position: absolute; top: -8%; width: 1.5px; height: 15px; border-radius: 1px; background: linear-gradient(rgba(206, 223, 247, 0), rgba(206, 223, 247, 0.62)); transform: rotate(12deg); animation: rain-drop var(--rd, 0.7s) linear var(--rdelay, 0s) infinite; }
+/* Fall the full height as a % of .ls-rain (so it tracks the landscape's clamp,
+   not a magic pixel distance); the slant lives on the element's static transform. */
+@keyframes rain-drop { from { top: -8%; } to { top: 108%; } }
+@keyframes rain-shower { 0%, 52% { opacity: 0; } 64%, 86% { opacity: 0.9; } 100% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) { .ls-bird, .ls-rain { display: none; } }
+
+/* Street lamps — pole + head + a warm glow that fades on while it's dark. Runs
+   the SAME 100s timeline as the day/night cycle above, so lamps light at dusk
+   (~30%), stay lit through night (45–60%), and go out at dawn (~78%). */
+.street-lamp { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); pointer-events: none; }
+.lamp-pole { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 3px; height: 36px; background: linear-gradient(#4a4a4a, #2a2a2a); border-radius: 2px; }
+.lamp-head { position: absolute; bottom: 33px; left: 50%; transform: translateX(-50%); width: 11px; height: 5px; background: #3a3a3a; border-radius: 2px 2px 5px 5px; }
+.lamp-glow { position: absolute; bottom: 22px; left: 50%; transform: translateX(-50%); width: 36px; height: 36px; border-radius: 50%; background: radial-gradient(circle, rgba(255,221,130,0.9) 0%, rgba(255,210,90,0.32) 42%, transparent 70%); opacity: 0; animation: lamp-glow 100s linear infinite; }
+.lamp-pool { position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%); width: 42px; height: 18px; border-radius: 50%; background: radial-gradient(ellipse, rgba(255,220,120,0.5) 0%, transparent 70%); opacity: 0; animation: lamp-glow 100s linear infinite; }
+@keyframes lamp-glow { 0%, 22% { opacity: 0; } 34% { opacity: 1; } 72% { opacity: 1; } 82% { opacity: 0; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lamp-glow, .lamp-pool { animation: none; opacity: 0; } }
+.iso-controls { position: absolute; right: 10px; bottom: 10px; display: flex; gap: 4px; z-index: 10; }
+.iso-controls button {
+  width: 30px; height: 30px; border: 1px solid var(--road); border-radius: 6px;
+  background: rgba(28,36,26,0.85); color: var(--text); font-size: 16px; cursor: pointer; line-height: 1;
+}
+.iso-controls button:hover { background: var(--panel-2); border-color: var(--accent); }
+
+/* Subtle zoom-in when you enter a level (city → buildings → citizens). */
+.iso-enter { animation: iso-zoom 0.26s ease-out; transform-origin: 50% 30%; }
+@keyframes iso-zoom { from { transform: scale(0.92); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+/* Live-activity glow for a running agent's sprite/avatar (transparent art). */
+@keyframes iso-glow {
+  0%, 100% { filter: drop-shadow(0 4px 3px rgba(0,0,0,0.4)); }
+  50% { filter: drop-shadow(0 0 8px rgba(255,210,63,0.95)) drop-shadow(0 4px 3px rgba(0,0,0,0.4)); }
+}
+
+/* ---- Iso city scene (tile grid: grass / road / water + trees + items) ---- */
+.iso-scene { /* tiles provide the ground; canvas bg shows through as out-of-bounds */ }
+.gtile { position: absolute; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.g-grass { background: linear-gradient(150deg, #519c49 0%, #3c7637 100%); }
+.g-road  { background: radial-gradient(closest-side, #5c636b, #474d53); }
+.g-water { background: linear-gradient(150deg, #57a0cf 0%, #2f6fb0 100%); }
+.g-floor { background: linear-gradient(150deg, #c2a878 0%, #a98c5e 100%); }   /* office floor */
+
+.scene-tree { position: absolute; width: 48px; height: auto; transform: translate(-50%, -80%); pointer-events: none; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.4)); }
+
+/* Chimney smoke: puffs that rise + drift + fade off a building's roof (staggered
+   per building via --sd). Anchored near the top of the ~104px sprite. */
+/* Offset in px (not %): the span is zero-width, so a % x-offset would resolve to
+   0 — nudge the puff origin left of centre so it reads as an off-centre chimney. */
+.bldg-smoke { position: absolute; left: 0; top: 0; transform: translate(-12px, -94px); pointer-events: none; }
+.bldg-smoke i { position: absolute; left: 0; bottom: 0; width: 7px; height: 7px; border-radius: 50%; background: rgba(228,228,228,0.5); animation: smoke-rise 4.8s ease-out infinite; animation-delay: var(--sd, 0s); }
+.bldg-smoke i:nth-child(2) { animation-delay: calc(var(--sd, 0s) + 1.6s); }
+.bldg-smoke i:nth-child(3) { animation-delay: calc(var(--sd, 0s) + 3.2s); }
+@keyframes smoke-rise {
+  0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  18% { opacity: 0.5; }
+  100% { opacity: 0; transform: translate(-15px, -36px) scale(1.9); }
+}
+@media (prefers-reduced-motion: reduce) { .bldg-smoke { display: none; } }
+
+/* Ambient cars looping along road lanes (positioned at a lane cell; the keyframe
+   drives them to the lane's far end via the per-car --dx/--dy, then loops). */
+.scene-car {
+  position: absolute; width: 42px; height: auto; pointer-events: none;
+  filter: drop-shadow(0 2px 1px rgba(0,0,0,0.45));
+  animation: scene-drive var(--dur, 9s) linear var(--delay, 0s) infinite;
+}
+@keyframes scene-drive {
+  from { transform: translate(-50%, -100%); }
+  to { transform: translate(calc(-50% + var(--dx)), calc(-100% + var(--dy))); }
+}
+/* Pedestrians strolling the lanes (emoji; slower than cars). */
+.scene-ped {
+  position: absolute; pointer-events: none;
+  transform: translate(-50%, -100%); filter: drop-shadow(0 2px 1px rgba(0,0,0,0.4));
+  animation: scene-drive var(--dur, 26s) linear var(--delay, 0s) infinite;
+}
+@media (prefers-reduced-motion: reduce) { .scene-car, .scene-ped { animation: none; } }
+
+/* CSS-drawn iso people (citizens, pedestrians, picker preview). Parts scale via
+   the --s var; `seated` hides the legs (sitting at a desk). */
+.iso-person { position: relative; display: inline-block; width: calc(26px * var(--s, 1)); height: calc(42px * var(--s, 1)); }
+.iso-person > span { position: absolute; left: 50%; }
+.ip-legs { bottom: 0; width: calc(15px * var(--s)); height: calc(15px * var(--s)); margin-left: calc(-7.5px * var(--s)); background: #39404d; border-radius: calc(3px * var(--s)) calc(3px * var(--s)) 0 0; }
+.ip-body { bottom: calc(10px * var(--s)); width: calc(18px * var(--s)); height: calc(20px * var(--s)); margin-left: calc(-9px * var(--s)); background: var(--shirt); border-radius: calc(8px * var(--s)) calc(8px * var(--s)) calc(4px * var(--s)) calc(4px * var(--s)); box-shadow: inset calc(-4px * var(--s)) 0 0 rgba(0,0,0,0.18); }
+.ip-head { bottom: calc(26px * var(--s)); width: calc(13px * var(--s)); height: calc(13px * var(--s)); margin-left: calc(-6.5px * var(--s)); border-radius: 50%; background: var(--skin); box-shadow: inset calc(-3px * var(--s)) 0 0 rgba(0,0,0,0.12); }
+.ip-hat { bottom: calc(33px * var(--s)); width: calc(15px * var(--s)); height: calc(6px * var(--s)); margin-left: calc(-7.5px * var(--s)); border-radius: calc(3px * var(--s)); background: var(--hat); }
+.iso-person.seated .ip-legs { display: none; }
+.iso-person.seated .ip-body { bottom: calc(2px * var(--s)); }
+.iso-person.seated .ip-head { bottom: calc(18px * var(--s)); }
+.iso-person.seated .ip-hat { bottom: calc(25px * var(--s)); }
+
+/* A desk the seated agent sits behind (in the building interior). */
+.scene-desk { position: absolute; left: 0; top: 0; transform: translate(-50%, -34%); width: 52px; height: 15px; background: linear-gradient(#9c6b3f, #835634); border-radius: 4px; box-shadow: 0 8px 0 #5e3c20, 0 3px 5px rgba(0,0,0,0.3); pointer-events: none; }
+/* A monitor on the desk — dim when idle, glowing/flickering while a run is active. */
+.desk-monitor { position: absolute; left: 0; top: 0; transform: translate(-50%, -56%); width: 18px; height: 13px; background: #0e1726; border: 1.5px solid #2a3650; border-radius: 2px; pointer-events: none; box-shadow: 0 0 4px rgba(90,150,230,0.3); }
+.desk-monitor::after { content: ''; position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%); width: 6px; height: 4px; background: #2a3650; border-radius: 0 0 2px 2px; }
+.scene-item.running .desk-monitor { background: #18406a; border-color: #4f9bff; box-shadow: 0 0 9px rgba(90,170,255,0.9); animation: screen-flicker 0.7s steps(3) infinite; }
+@keyframes screen-flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.78; } }
+@media (prefers-reduced-motion: reduce) { .scene-item.running .desk-monitor { animation: none; } }
+
+/* Avatar figure preview next to the PersonEditor picker. */
+.avatar-preview { width: 38px; height: 48px; background: var(--panel); border-radius: 5px; display: flex; align-items: flex-end; justify-content: center; overflow: hidden; flex: 0 0 auto; }
+
+/* Idle motion: seated agents gently bob (staggered via --bd); a running agent
+   bobs faster (busy); pedestrians get a quicker walk-bounce. */
+@keyframes idle-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
+.scene-avatar .iso-person { animation: idle-bob 2.6s ease-in-out infinite; animation-delay: var(--bd, 0s); }
+.scene-item.running .scene-avatar .iso-person { animation-duration: 0.55s; }
+/* Pedestrians walk: a stepping bob with a slight alternating lean (reads as a
+   stride at ped scale), plus a contact shadow and, for couriers, a carried box. */
+.scene-ped .iso-person { animation: ped-walk 0.7s ease-in-out infinite; transform-origin: 50% 100%; }
+@keyframes ped-walk {
+  0% { transform: translateY(0) rotate(-2.5deg); }
+  25% { transform: translateY(-2px) rotate(0deg); }
+  50% { transform: translateY(0) rotate(2.5deg); }
+  75% { transform: translateY(-2px) rotate(0deg); }
+  100% { transform: translateY(0) rotate(-2.5deg); }
+}
+.ped-shadow { position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); width: 15px; height: 5px; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,0.32) 0%, transparent 70%); }
+.ped-parcel { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); width: 9px; height: 8px; background: linear-gradient(#caa472, #a87f4e); border: 1px solid #8a6638; border-radius: 1px; }
+.ped-parcel::after { content: ''; position: absolute; inset: 2px 3px auto 3px; height: 1px; background: rgba(0,0,0,0.25); }
+@media (prefers-reduced-motion: reduce) { .scene-avatar .iso-person, .scene-ped .iso-person { animation: none; } }
+
+/* Office potted plant (interior decor). */
+.office-plant { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); width: 22px; height: 30px; pointer-events: none; filter: drop-shadow(0 2px 1px rgba(0,0,0,0.4)); }
+.office-plant .pot { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 13px; height: 11px; background: linear-gradient(#a9663b, #7d4a28); border-radius: 0 0 3px 3px; }
+.office-plant .leaves { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 22px; height: 24px; background: radial-gradient(circle at 45% 38%, #54b35c, #2f7d3a); border-radius: 50% 50% 42% 42%; }
+
+/* Office back walls (the iso "room") with a band of windows. The view clips each
+   to a parallelogram; the ::before window band is clipped along with it. */
+.office-wall { position: absolute; pointer-events: none; }
+.wall-right { background: linear-gradient(180deg, #d3c8ac 0%, #b8aa86 100%); }
+.wall-left { background: linear-gradient(180deg, #c4b99d 0%, #a99c78 100%); }
+.office-wall::before { content: ''; position: absolute; left: 8%; right: 8%; top: 24%; height: 30%; background: repeating-linear-gradient(90deg, #a9d6ec 0 16px, #79b0cf 16px 20px); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+
+/* "Thinking" bubble over an agent with an active run. */
+.think-bubble { position: absolute; left: 0; top: 0; transform: translate(-50%, -70px); display: flex; gap: 3px; align-items: center; padding: 4px 6px; background: #fff; border-radius: 9px; box-shadow: 0 2px 5px rgba(0,0,0,0.35); z-index: 1000; }
+.think-bubble::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #fff; }
+.think-bubble i { width: 4px; height: 4px; border-radius: 50%; background: #5a6270; animation: think-dot 1.2s ease-in-out infinite; }
+.think-bubble i:nth-child(2) { animation-delay: 0.2s; }
+.think-bubble i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes think-dot { 0%, 100% { opacity: 0.3; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-1px); } }
+@media (prefers-reduced-motion: reduce) { .think-bubble i { animation: none; opacity: 0.8; } }
+
+/* Status emote bubble over a citizen: 🔧 while a tool runs, or ✓ / ❗ + a one-line
+   summary when a run this browser started finishes (driven by useEmotes). */
+.emote-bubble {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -74px);
+  display: inline-flex; align-items: center; gap: 4px; max-width: 168px;
+  padding: 4px 8px; border-radius: 9px; background: #fff; color: #1b2330;
+  font-size: 11px; font-weight: 600; line-height: 1.2; white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4); z-index: 1000; pointer-events: none;
+}
+.emote-bubble::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #fff; }
+.emote-bubble .emote-text { overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.emote-bubble.done { background: #e9fbef; color: #14532d; }
+.emote-bubble.done::after { border-top-color: #e9fbef; }
+.emote-bubble.error { background: #ffe9e6; color: #7a1d12; }
+.emote-bubble.error::after { border-top-color: #ffe9e6; }
+.emote-bubble.tool { background: #eaf2ff; color: #1e3a5f; }
+.emote-bubble.tool::after { border-top-color: #eaf2ff; }
+.emote-bubble.appear { animation: emote-in 0.22s ease-out; }
+@keyframes emote-in { from { opacity: 0; transform: translate(-50%, -66px) scale(0.85); } to { opacity: 1; transform: translate(-50%, -74px) scale(1); } }
+
+/* Coin pop: a golden ✓ that floats up off the desk the moment a run completes. */
+.coin-pop {
+  position: absolute; left: 0; top: 0;
+  display: flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; pointer-events: none; z-index: 1001;
+  background: radial-gradient(circle at 38% 30%, #ffe88f, #f3b100);
+  color: #7a4d00; font-size: 13px; font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 0 0 1.5px rgba(255,255,255,0.6);
+  animation: coin-pop 1.15s ease-out forwards;
+}
+@keyframes coin-pop {
+  0% { opacity: 0; transform: translate(-50%, -86px) scale(0.5); }
+  22% { opacity: 1; transform: translate(-50%, -100px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -132px) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .emote-bubble.appear { animation: none; }
+  .coin-pop { animation: none; opacity: 0; }
+}
+
+/* A placed item (building / citizen / city): a zero-size anchor at the tile
+   centre; its sprite is bottom-centred on that point via translate. Because the
+   anchor itself has no area, the visible art (sprite/avatar/cluster/label) must
+   keep `pointer-events: auto` so a click lands on it and bubbles to the button —
+   only the shadow stays `none`. */
+.scene-item { position: absolute; width: 0; height: 0; background: none; border: none; padding: 0; cursor: pointer; color: var(--text); }
+.scene-shadow { position: absolute; left: 0; top: 0; transform: translate(-50%, -46%); width: 84px; height: 30px; background: radial-gradient(ellipse at center, rgba(0,0,0,0.45) 0%, transparent 70%); pointer-events: none; }
+.scene-sprite { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); width: 104px; height: auto; pointer-events: auto; filter: drop-shadow(0 4px 3px rgba(0,0,0,0.4)); transition: transform 0.12s ease; }
+.scene-item:hover .scene-sprite { transform: translate(-50%, -100%) translateY(-4px); }
+.scene-item.sel .scene-sprite { filter: drop-shadow(0 0 7px var(--accent)) drop-shadow(0 4px 3px rgba(0,0,0,0.4)); }
+.scene-item.running .scene-sprite { animation: iso-glow 1.3s ease-in-out infinite; }
+.scene-label { position: absolute; left: 0; top: 0; transform: translate(-50%, 12px); white-space: nowrap; font-size: 12px; font-weight: 700; text-shadow: 0 1px 2px rgba(0,0,0,0.8); pointer-events: auto; }
+
+/* Citizen avatar (emoji) variant of a scene item. */
+.scene-avatar { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); pointer-events: auto; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.45)); transition: transform 0.12s ease; }
+.scene-item:hover .scene-avatar { transform: translate(-50%, -100%) translateY(-4px); }
+.scene-item.sel .scene-avatar { filter: drop-shadow(0 0 7px var(--accent)) drop-shadow(0 3px 2px rgba(0,0,0,0.45)); }
+.scene-item.running .scene-avatar { animation: iso-glow 1.3s ease-in-out infinite; }
+.scene-sub { position: absolute; left: 0; top: 0; transform: translate(-50%, 26px); white-space: nowrap; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+
+/* Windows lit at night: a warm glow over a building. It lights at dusk on the SAME
+   100s timeline as the street lamps (reusing the lamp-glow keyframe); a building
+   with a running agent glows brighter and pulses regardless of the hour ("working
+   late"). A warm radial wash layered over the sprite + ground so it reads as light
+   spilling from windows. (The world map's cities use their own .ls-glow.) */
+.bldg-glow {
+  position: absolute; left: 0; top: 0; transform: translate(-50%, -100%);
+  width: 112px; height: 104px; pointer-events: none;
+  background: radial-gradient(ellipse 56% 44% at 50% 58%, rgba(255,205,110,0.62) 0%, rgba(255,184,80,0.28) 46%, transparent 72%);
+  opacity: 0; animation: lamp-glow 100s linear infinite;
+}
+/* A building with a running agent glows warm + bright and pulses, day or night
+   ("working late") — the strongest at-a-glance "this workspace is busy" signal. */
+.scene-item.running .bldg-glow {
+  background: radial-gradient(ellipse 60% 50% at 50% 56%, rgba(255,233,156,1) 0%, rgba(255,196,84,0.62) 42%, rgba(255,180,70,0.18) 64%, transparent 78%);
+  animation: window-busy 1.6s ease-in-out infinite;
+}
+@keyframes window-busy { 0%, 100% { opacity: 0.62; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .bldg-glow { animation: none; opacity: 0; }
+  .scene-item.running .bldg-glow { animation: none; opacity: 0.9; }
+}
+
+/* Empty "add new" plot: a translucent diamond + a "+" you click to create the
+   current screen's entity (city / building / citizen). */
+.scene-add { position: absolute; width: 0; height: 0; background: none; border: none; padding: 0; cursor: pointer; }
+.scene-add-tile { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 150px; height: 76px; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: rgba(255,255,255,0.10); pointer-events: auto; transition: background 0.12s ease; }
+.scene-add:hover .scene-add-tile { background: rgba(255,210,63,0.28); }
+.scene-add-plus { position: absolute; left: 0; top: 0; transform: translate(-50%, -55%); font-size: 30px; font-weight: 800; color: rgba(255,255,255,0.85); pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.6); }
+.scene-add:hover .scene-add-plus { color: var(--accent); }
+.scene-add-label { position: absolute; left: 0; top: 0; transform: translate(-50%, 10px); white-space: nowrap; font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.85); pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+.scene-add:hover .scene-add-label { color: var(--accent); }
+
+/* Graphic picker (Config view): real sprite thumbnail + dropdown. */
+.config-graphic { display: flex; align-items: center; gap: 8px; }
+.config-graphic-swatch { width: 34px; height: 34px; object-fit: contain; background: var(--panel); border-radius: 5px; }
+.config-graphic-select { flex: 1; padding: 6px 8px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); font-family: inherit; font-size: 13px; }
+
+/* ---- Live activity badge (CityMap / CityInterior) ---- */
+.activity-badge {
+  display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+  margin-left: 6px; padding: 0 6px; min-width: 18px; height: 16px;
+  font-size: 11px; font-weight: 700; line-height: 1; vertical-align: middle;
+  border-radius: 8px; background: var(--road-light); color: var(--text);
+}
+.activity-badge.active { background: var(--zone-res); color: #062; }
+/* Reuse the .run-dot pulse (keyframes run-pulse), recolored for the badge. */
+.activity-badge .run-dot { margin: 0; font-size: 8px; color: inherit; }
+
+/* ---- Chat ---- */
+.chat { display: flex; flex-direction: column; height: 100%; }
+.messages { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding-bottom: 8px; }
+.bubble { max-width: 80%; padding: 10px 14px; border-radius: 12px; }
+.bubble .who { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; margin-bottom: 4px; }
+.bubble.user { align-self: flex-end; background: var(--zone-com); color: #fff; }
+.bubble.assistant { align-self: flex-start; background: var(--paper); color: var(--ink); }
+.bubble.assistant.live { opacity: 0.85; }
+.note { align-self: flex-start; font-size: 12px; color: var(--ink); opacity: 0.65; font-style: italic; }
+.typing { align-self: flex-start; color: var(--ink); opacity: 0.6; font-style: italic; }
+.handoff { margin-top: 8px; }
+.handoff button { background: var(--accent); border: none; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-weight: 600; }
+
+/* Handoff courier — a paper plane that arcs across the whole screen carrying the
+   receiving citizen's name when one person hands work to another. A fixed,
+   click-through overlay so it plays over any view; mounted only while in flight. */
+.courier-fx { position: fixed; inset: 0; z-index: 4000; pointer-events: none; overflow: hidden; }
+.courier { position: absolute; top: 0; left: 0; display: flex; align-items: center; gap: 9px; will-change: transform, opacity; animation: courier-fly 2.4s cubic-bezier(0.4, 0, 0.5, 1) forwards; }
+.courier-plane { position: relative; width: 30px; height: 30px; fill: #fdf6e3; filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.35)); transform: rotate(-8deg); }
+/* A short dashed contrail trailing the plane's tail, fading out behind it. */
+.courier-plane::after {
+  content: ''; position: absolute; right: 78%; top: 50%; width: 42px; height: 2px; transform: translateY(-50%);
+  background: repeating-linear-gradient(to left, rgba(253, 246, 227, 0.8) 0 5px, transparent 5px 10px);
+  -webkit-mask: linear-gradient(to left, #000, transparent); mask: linear-gradient(to left, #000, transparent);
+  border-radius: 2px;
+}
+.courier-label { padding: 3px 10px; border-radius: 999px; background: var(--accent); color: #1c241a; font-weight: 700; font-size: 13px; white-space: nowrap; box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3); }
+@keyframes courier-fly {
+  0%   { transform: translate(-12vw, 64vh) rotate(6deg) scale(0.78); opacity: 0; }
+  12%  { opacity: 1; }
+  50%  { transform: translate(46vw, 30vh) rotate(-3deg) scale(1.04); opacity: 1; }
+  86%  { opacity: 1; }
+  100% { transform: translate(110vw, 40vh) rotate(7deg) scale(0.82); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .courier-fx { display: none; } }
+
+.composer { display: flex; gap: 8px; padding-top: 10px; border-top: 2px solid var(--road); }
+.composer textarea { flex: 1; resize: none; min-height: 44px; max-height: 160px; padding: 10px; border-radius: 8px; border: 2px solid var(--road); font-family: inherit; }
+.composer button { padding: 0 18px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; background: var(--accent); }
+.composer button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ---- Markdown ---- */
+.md :first-child { margin-top: 0; }
+.md :last-child { margin-bottom: 0; }
+.md pre { background: #0d1117; color: #e6edf3; padding: 12px; border-radius: 8px; overflow-x: auto; }
+.md code { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 13px; }
+.md table { border-collapse: collapse; }
+.md th, .md td { border: 1px solid #ccc; padding: 4px 8px; }
+.md .mermaid-diagram { display: flex; justify-content: center; background: #fff; border: 1px solid var(--road-light); border-radius: 8px; padding: 10px; margin: 8px 0; overflow-x: auto; }
+.md .mermaid-diagram svg { max-width: 100%; height: auto; }
+
+/* ---- Diff viewer ---- */
+.topbar > button.active { background: var(--accent); color: #222; }
+.diffview-head { display: flex; align-items: center; gap: 8px; }
+.diff-files { display: flex; flex-direction: column; gap: 10px; margin: 4px 0 14px; }
+.diff-group-head { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 4px; }
+.diff-file { display: block; width: 100%; text-align: left; background: var(--panel-2); border: 1px solid var(--road); color: var(--text); border-radius: 6px; padding: 6px 10px; margin-bottom: 4px; cursor: pointer; font-family: 'Cascadia Code','Consolas',monospace; font-size: 12px; }
+.diff-file:hover { border-color: var(--accent); }
+.diff-file.active { border-color: var(--accent); background: var(--panel); }
+.diff-refresh { background: var(--road-light); border: none; color: var(--text); border-radius: 5px; cursor: pointer; padding: 2px 8px; }
+.diff-stat { font-size: 12px; margin-bottom: 6px; font-family: 'Cascadia Code','Consolas',monospace; }
+.diff-add-count { color: #3fb950; }
+.diff-del-count { color: #f85149; }
+.diff-pre { background: #0d1117; border-radius: 8px; padding: 10px 0; overflow-x: auto; font-family: 'Cascadia Code','Consolas',monospace; font-size: 12px; line-height: 1.45; margin: 0; }
+.diff-line { white-space: pre; padding: 0 12px; }
+.diff-add { color: #3fb950; background: rgba(63,185,80,0.12); }
+.diff-del { color: #f85149; background: rgba(248,81,73,0.12); }
+.diff-hunk { color: #58a6ff; }
+.diff-meta { color: var(--muted); }
+.diff-ctx { color: #c9d1d9; }
+
+/* ---- Usage panel ---- */
+.usage-head { display: flex; align-items: center; gap: 12px; }
+.usage-head select { padding: 4px 8px; border-radius: 6px; border: 1px solid var(--road); background: var(--panel-2); color: var(--text); }
+.usage-totals { display: flex; flex-wrap: wrap; gap: 14px; margin: 8px 0 16px; }
+.usage-stat { background: var(--panel-2); border: 1px solid var(--road); border-radius: 8px; padding: 10px 16px; min-width: 110px; }
+.usage-stat span { display: block; font-size: 20px; font-weight: 700; }
+.usage-stat small { color: var(--muted); font-size: 11px; }
+.usage-subhead { margin: 14px 0 6px; font-size: 14px; }
+.usage-table { border-collapse: collapse; width: 100%; max-width: 540px; font-size: 13px; }
+.usage-table th, .usage-table td { border: 1px solid var(--road); padding: 5px 10px; text-align: left; }
+.usage-table th { color: var(--muted); font-weight: 600; }
+.usage-table th:not(:first-child), .usage-table td:not(:first-child) { text-align: right; }
+
+/* ---- Task board (City Hall work orders) ---- */
+.taskboard { max-width: 1000px; }
+.tb-new { display: flex; flex-direction: column; gap: 8px; background: var(--panel-2); border: 1px solid var(--road); border-radius: 10px; padding: 12px; margin-bottom: 14px; }
+.tb-new-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.tb-new .tb-title { flex: 1 1 220px; min-width: 160px; padding: 7px 9px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); font-family: inherit; font-size: 13px; }
+.tb-new select { padding: 7px 8px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); font-size: 13px; }
+.tb-new .tb-desc { width: 100%; min-height: 46px; resize: vertical; padding: 7px 9px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); font-family: inherit; font-size: 13px; }
+.tb-new .primary { background: var(--accent); color: #222; border: none; border-radius: 6px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+.tb-new .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.tb-columns { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; align-items: start; }
+.tb-col { background: var(--panel); border: 1px solid var(--road); border-radius: 10px; padding: 8px; min-height: 80px; }
+.tb-col-head { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); padding: 4px 6px 8px; display: flex; align-items: center; gap: 6px; }
+.tb-count { background: var(--road-light); color: var(--text); border-radius: 8px; min-width: 18px; height: 16px; padding: 0 5px; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+.tb-card { background: var(--panel-2); border: 1px solid var(--road); border-left: 4px solid var(--road-light); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+.tb-card.prio-high { border-left-color: var(--danger); }
+.tb-card.prio-medium { border-left-color: var(--accent); }
+.tb-card.prio-low { border-left-color: var(--zone-res); }
+.tb-card-title { font-weight: 600; font-size: 13px; }
+.tb-card-desc { font-size: 12px; color: var(--muted); overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
+.tb-card-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.tb-tag, .tb-prio { font-size: 10px; padding: 1px 7px; border-radius: 8px; background: var(--road-light); color: var(--text); }
+.tb-prio.prio-high { background: var(--danger); color: #fff; }
+.tb-prio.prio-medium { background: var(--accent); color: #222; }
+.tb-prio.prio-low { background: var(--zone-res); color: #062; }
+.tb-card-actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.tb-card-actions button { background: var(--road-light); color: var(--text); border: none; border-radius: 5px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
+.tb-card-actions button:hover { background: var(--panel); }
+.tb-card-actions .tb-spawn { background: var(--accent); color: #222; font-weight: 700; margin-left: auto; }
+.tb-card-actions .tb-del { color: var(--muted); }
+.tb-card-actions .tb-del:hover { color: var(--danger); }
+.tb-card-actions .tb-del-go { background: var(--danger); color: #fff; font-weight: 700; }
+.tb-confirm { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.tb-confirm .confirm-msg { font-size: 12px; }
+@media (max-width: 760px) { .tb-columns { grid-template-columns: 1fr; } }
+
+/* ---- Treasury HUD (top-bar chip) + leaderboard panel ---- */
+.treasury-hud { display: inline-flex; align-items: center; gap: 8px; background: linear-gradient(#2b3420, #222a1a); border: 1px solid var(--road); color: var(--text); border-radius: 8px; padding: 4px 10px; cursor: pointer; font-weight: 700; font-size: 12px; line-height: 1; }
+.treasury-hud:hover { border-color: var(--accent); }
+.treasury-hud.active { border-color: var(--accent); background: var(--panel-2); }
+.treasury-hud .th-gold { color: #ffd23f; }
+.treasury-hud .th-tools { color: var(--muted); font-weight: 600; }
+.treasury .tr-rank { display: inline-block; min-width: 1.7em; }
+.treasury-board td:first-child small { color: var(--muted); }
+
+/* ---- Right panel ---- */
+.rightpanel { background: var(--panel); border-left: 3px solid var(--road); overflow-y: auto; }
+.picker { padding: 0 14px 14px; }
+.picker select { width: 100%; padding: 8px; border-radius: 6px; border: 2px solid var(--road); }
+.picker-path { font-size: 11px; color: var(--muted); margin: 6px 0 4px; word-break: break-all; }
+.pathpicker-input { width: 100%; padding: 6px; border-radius: 6px; border: 1px solid var(--road); background: var(--panel-2); color: var(--text); font-family: 'Cascadia Code','Consolas',monospace; font-size: 11px; }
+.pathpicker-badges { display: flex; gap: 6px; flex-wrap: wrap; margin: 2px 0 4px; }
+.pp-badge { font-size: 10px; padding: 1px 7px; border-radius: 8px; }
+.pp-ok { background: var(--zone-res); color: #062; }
+.pp-bad { background: var(--danger); color: #fff; }
+.pp-muted { background: var(--road-light); color: var(--muted); }
+.picker-people { list-style: none; margin: 0; padding: 0; }
+.picker-people li { display: flex; align-items: center; gap: 2px; }
+.picker-people button { width: 100%; text-align: left; background: none; border: none; color: var(--text); cursor: pointer; padding: 8px 6px; display: flex; flex-direction: column; border-radius: 6px; }
+.picker-people li > button:first-child { flex: 1 1 auto; width: auto; min-width: 0; }
+.picker-people button:hover { background: var(--panel-2); }
+.picker-people button.active { background: var(--panel-2); outline: 1px solid var(--accent); }
+.picker-people small { color: var(--muted); }
+.picker-newperson { margin: 8px 0 0; }
+.picker-people .person-edit { flex: 0 0 auto; width: auto; align-items: center; padding: 6px 8px; color: var(--muted); font-size: 13px; }
+.picker-people .person-edit:hover { background: var(--panel-2); color: var(--accent); }
+.run-dot { color: var(--zone-res); font-size: 9px; margin-right: 6px; vertical-align: middle; animation: run-pulse 1.4s ease-in-out infinite; }
+@keyframes run-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+/* ---- Modal (Person editor) ---- */
+.modal-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 20px; }
+.modal { background: var(--panel); border: 2px solid var(--road); border-radius: 12px; width: min(680px, 100%); max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); }
+.modal.compact { width: min(460px, 100%); }
+.modal-hint { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+.modal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 2px solid var(--road); font-weight: 700; }
+.modal-close { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; }
+.modal-close:hover { color: var(--text); }
+.modal-warn { background: var(--zone-ind); color: var(--ink); padding: 10px 16px; font-size: 13px; }
+.modal-body { padding: 14px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.modal-foot { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-top: 2px solid var(--road); justify-content: flex-end; }
+.modal-foot .primary { background: var(--accent); color: #222; border: none; border-radius: 6px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+.modal-foot .ghost { background: var(--road-light); color: var(--text); border: none; border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+.modal-foot .danger { background: var(--danger); color: #fff; border: none; border-radius: 6px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+.modal-foot .danger.del-left { margin-right: auto; } /* push Delete to the far left */
+.modal-foot button:disabled { opacity: 0.5; cursor: not-allowed; }
+.confirm-msg { font-size: 13px; color: var(--accent); margin-right: auto; }
+.modal .error { margin: 0 16px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field > span { text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; color: var(--muted); }
+.field input, .field select, .field textarea { padding: 8px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel-2); color: var(--text); font-family: inherit; font-size: 14px; }
+.field textarea { resize: vertical; }
+.field textarea.mono { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 13px; }
+.field .prompt-area { min-height: 180px; }
+.field-row { display: flex; gap: 12px; }
+.field-row .field { flex: 1; }
+.field-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); }
+
+/* ---- Config panel (cities.json editor) ---- */
+.configpanel { max-width: 720px; }
+.config-city { background: var(--panel-2); border: 2px solid var(--road); border-radius: 10px; padding: 14px; margin-bottom: 16px; display: flex; flex-direction: column; gap: 10px; }
+.config-city-head { font-size: 16px; font-weight: 700; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.config-city-head small { color: var(--muted); font-weight: 400; font-size: 12px; margin-left: 6px; }
+.config-city-head .config-remove { font-size: 14px; }
+.config-city-head .danger { background: var(--danger); color: #fff; border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; font-weight: 700; }
+.config-city-head .ghost { background: var(--road-light); color: var(--text); border: none; border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+.config-city-head .confirm-msg { font-size: 12px; }
+.config-newcity-row { display: flex; gap: 8px; align-items: center; }
+.config-newcity-row .bid { flex: 0 0 140px; }
+.config-newcity-row .bname { flex: 1; }
+.config-newcity-row input { padding: 7px 9px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); font-family: inherit; font-size: 13px; }
+.config-newcity .primary { background: var(--accent); color: #222; border: none; border-radius: 6px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+.config-newcity .primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.config-sub { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 6px; }
+.config-sub small { text-transform: none; letter-spacing: 0; }
+.config-building { border: 1px solid var(--road); border-radius: 8px; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+.config-building-row { display: flex; gap: 6px; align-items: center; }
+.config-building-row .bid { flex: 0 0 110px; }
+.config-building-row .bid.mono { font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 12px; color: var(--muted); }
+.config-building-row .bname { flex: 1; }
+.config-building input { padding: 6px 8px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); font-family: inherit; font-size: 13px; }
+.config-remove { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 4px 6px; }
+.config-remove:hover { color: var(--danger); }
+.config-add { align-self: flex-start; background: var(--road-light); color: var(--text); border: none; border-radius: 6px; padding: 5px 10px; cursor: pointer; font-size: 12px; }
+.config-roster { list-style: decimal; margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 4px; }
+.config-roster li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.config-roster .missing { color: var(--danger); }
+.config-roster-actions { display: flex; gap: 2px; }
+.config-roster-actions button { background: var(--road-light); color: var(--text); border: none; border-radius: 4px; cursor: pointer; padding: 2px 7px; font-size: 11px; }
+.config-roster-actions button:disabled { opacity: 0.35; cursor: not-allowed; }
+.config-add-member select { padding: 6px 8px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); }
+.config-foot { display: flex; align-items: center; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+.config-foot .primary { background: var(--accent); color: #222; border: none; border-radius: 6px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+.config-foot .ghost { background: var(--road-light); color: var(--text); border: none; border-radius: 6px; padding: 7px 14px; cursor: pointer; }
+.config-foot button:disabled { opacity: 0.5; cursor: not-allowed; }
+.config-saved { color: var(--zone-res); font-size: 13px; margin-right: auto; }
+
+/* ---- GitHub panel (branch / commit / push / PR) ---- */
+.ghpanel { margin-top: 18px; border-top: 2px solid var(--road); padding-top: 14px; max-width: 720px; }
+.gh-title { margin: 0 0 8px; font-size: 15px; }
+.gh-banner { font-size: 12px; padding: 7px 10px; border-radius: 6px; margin-bottom: 8px; }
+.gh-banner.warn { background: var(--zone-ind); color: var(--ink); }
+.gh-banner code { background: rgba(0, 0, 0, 0.25); padding: 0 4px; border-radius: 3px; }
+.gh-meta { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+.gh-step { background: var(--panel-2); border: 1px solid var(--road); border-radius: 8px; padding: 10px; margin-bottom: 10px; display: flex; flex-direction: column; gap: 8px; }
+.gh-step .field > span small { text-transform: none; letter-spacing: 0; color: var(--muted); }
+.gh-step input, .gh-step textarea { padding: 7px 9px; border-radius: 6px; border: 2px solid var(--road); background: var(--panel); color: var(--text); font-family: inherit; font-size: 13px; }
+.gh-step textarea.mono { font-family: 'Cascadia Code', 'Consolas', monospace; resize: vertical; }
+.gh-step-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.gh-step .primary { align-self: flex-start; background: var(--accent); color: #222; border: none; border-radius: 6px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+.gh-step .ghost { background: var(--road-light); color: var(--text); border: none; border-radius: 6px; padding: 7px 12px; cursor: pointer; }
+.gh-step .danger { align-self: flex-start; background: var(--danger); color: #fff; border: none; border-radius: 6px; padding: 7px 14px; font-weight: 700; cursor: pointer; }
+.gh-step button:disabled { opacity: 0.45; cursor: not-allowed; }
+.gh-confirm { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gh-result { background: var(--panel-2); border: 1px solid var(--zone-res); border-radius: 6px; padding: 8px 10px; font-size: 13px; }
+.gh-result a { color: var(--accent); }
+
+.history { padding: 0 14px 14px; }
+.history-head { display: flex; justify-content: space-between; align-items: center; }
+.history-head button { background: var(--road-light); border: none; color: var(--text); border-radius: 5px; cursor: pointer; padding: 2px 7px; font-size: 12px; }
+.history-head button:disabled { opacity: 0.5; cursor: not-allowed; }
+.history-actions { display: flex; gap: 4px; align-items: center; }
+.history-actions .hist-clear-go { background: var(--danger); color: #fff; font-weight: 700; }
+.history-filters { padding: 0 14px 8px; display: flex; flex-direction: column; gap: 6px; }
+.hist-search { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid var(--road); background: var(--panel-2); color: var(--text); font-size: 12px; }
+.hist-selects { display: flex; gap: 6px; flex-wrap: wrap; }
+.hist-selects select { flex: 1; min-width: 0; padding: 4px; border-radius: 6px; border: 1px solid var(--road); background: var(--panel-2); color: var(--text); font-size: 11px; }
+.history ul { list-style: none; margin: 0; padding: 0; }
+.run { display: flex; flex-direction: column; gap: 4px; font-size: 12px; padding: 6px 0; border-bottom: 1px solid var(--road); }
+.run-row { display: flex; gap: 8px; }
+.run-row .run-status { margin-left: auto; }
+.run-summary { font-size: 11px; color: var(--muted); line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+.run-done .run-status { color: var(--zone-res); }
+.run-error .run-status { color: var(--danger); }
+.run-running .run-status { color: var(--accent); }
+.run-queued .run-status { color: var(--muted); }
+.run-cancelled .run-status { color: var(--muted); }
+.run-model { color: var(--muted); }
+.run-open { width: 100%; background: none; border: none; color: inherit; font: inherit; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 4px; padding: 2px 4px; border-radius: 5px; }
+.run-open:hover { background: var(--panel-2); }
+
+/* ---- Run transcript (replay modal) ---- */
+.run-transcript { width: min(760px, 100%); }
+.rt-meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 16px; border-bottom: 1px solid var(--road); font-size: 12px; color: var(--muted); }
+.rt-meta .run-status { font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.rt-meta .run-status.run-done { color: var(--zone-res); }
+.rt-meta .run-status.run-error { color: var(--danger); }
+.rt-meta .run-status.run-running { color: var(--accent); }
+.rt-meta .run-status.run-queued, .rt-meta .run-status.run-cancelled { color: var(--muted); }
+.rt-summary { flex-basis: 100%; color: var(--text); }
+.rt-thinking { background: var(--panel-2); border: 1px solid var(--road); border-radius: 8px; padding: 6px 10px; font-size: 12px; }
+.rt-thinking summary { cursor: pointer; color: var(--muted); }
+.rt-thinking-body { white-space: pre-wrap; color: var(--muted); margin-top: 6px; font-family: 'Cascadia Code', 'Consolas', monospace; }
+.empty { color: var(--muted); font-size: 12px; padding: 8px 0; }
+
+.app-error { max-width: 640px; margin: 48px auto; padding: 24px; font-family: system-ui, sans-serif; }
+.app-error h2 { margin: 0 0 8px; }
+.app-error pre { white-space: pre-wrap; background: rgba(0,0,0,0.25); padding: 12px; border-radius: 6px; color: var(--muted); font-size: 12px; overflow: auto; }
+.app-error button { margin-top: 12px; padding: 6px 14px; cursor: pointer; }
+
+.field-hint { display: block; color: var(--muted); font-size: 11px; margin-top: 4px; }
+
+/* Keyboard focus rings for the iso scene buttons. The <button> itself is 0x0
+   (the sprite is drawn via overflowing children), so a focus ring on it would be
+   invisible — outline the visible label / add-tile child instead. */
+.scene-item:focus-visible, .scene-add:focus-visible { outline: none; }
+.scene-item:focus-visible .scene-label,
+.scene-item:focus-visible .scene-avatar,
+.scene-add:focus-visible .scene-add-tile,
+.scene-add:focus-visible .town-add-art {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* Live agent-todos checklist at the top of the chat. */
+.todo-panel { border: 1px solid var(--panel-2); background: var(--panel); border-radius: 6px; margin: 0 0 8px; max-height: 30vh; overflow: auto; }
+.todo-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 10px; font-size: 12px; font-weight: 600; border-bottom: 1px solid var(--panel-2); position: sticky; top: 0; background: var(--panel); }
+.todo-count { color: var(--muted); font-weight: 400; }
+.todo-list { list-style: none; margin: 0; padding: 4px 0; }
+.todo-item { display: flex; gap: 8px; padding: 3px 10px; font-size: 13px; color: var(--text); align-items: baseline; }
+.todo-icon { flex: none; width: 1em; text-align: center; color: var(--muted); }
+.todo-active { color: var(--accent); }
+.todo-active .todo-icon { color: var(--accent); }
+.todo-done .todo-icon { color: var(--zone-res); }
+.todo-done .todo-text { color: var(--muted); text-decoration: line-through; }
+.todo-skipped .todo-text { color: var(--muted); }
