@@ -19,7 +19,7 @@ function readGuidelines(name) {
   return readFileCached(path.join(GUIDELINES_DIR, `${name}.md`));
 }
 
-const FOOTER = `# Working inside the SimCity Agent Hub
+const FOOTER = `# Working inside the Simulated Agent City Hub
 
 A few hub-specific rules override your defaults:
 

@@ -1,6 +1,6 @@
 # Cutting a Release
 
-The runbook for tagging a new SimCity Agent Hub version. This is a **local-first
+The runbook for tagging a new Simulated Agent City Hub version. This is a **local-first
 app** — there is no marketplace or registry publish step; a release is a version
 bump, a consolidated CHANGELOG, and an annotated git tag.
 

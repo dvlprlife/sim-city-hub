@@ -102,7 +102,7 @@ async function main() {
     openBrowser();
     return;
   }
-  console.log('Starting SimCity Agent Hub…');
+  console.log('Starting Simulated Agent City Hub…');
   startServer();
   if (await waitForHealth()) {
     console.log(`Hub is up at ${URL}`);

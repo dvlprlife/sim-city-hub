@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../hooks/useApi.js';
 import PathPicker from './PathPicker.jsx';
-// Building-graphic options come from the SimCity theme layer — ConfigPanel
+// Building-graphic options come from the Simulated Agent City theme layer — ConfigPanel
 // renders the list but hardcodes no sprite strings of its own, so the theme
 // stays confined to the map/ + themed-view files (see issue #32 plan).
 import { buildingSprites, DEFAULT_BUILDING_SPRITE, spriteFor } from '../map/buildingSprites.js';

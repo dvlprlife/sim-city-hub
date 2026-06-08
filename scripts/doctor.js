@@ -17,7 +17,7 @@ function probe(cmd) {
   catch { return null; }
 }
 
-console.log('\nSimCity Agent Hub — preflight\n');
+console.log('\nSimulated Agent City Hub — preflight\n');
 let blocked = false;
 
 const [maj, minr] = process.versions.node.split('.').map(Number);

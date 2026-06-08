@@ -7,13 +7,18 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **Renamed the project to Simulated Agent City Hub.** The display name and the
+  city-theme references were updated throughout the UI, docs, and code comments.
+  (Internal slugs — the package names, the database file, and the repo URL — are
+  unchanged.)
+
 ## [0.3.0] - 2026-06-08
 
-The SimCity world comes alive — a landscape world map, a town around a roundabout,
+The Simulated Agent City world comes alive — a landscape world map, a town around a roundabout,
 weather, and live agent activity — plus a City Hall task board, a Treasury HUD,
 one-command self-hosting, and an "Open in VS Code" button.
 
-- **The world became a living SimCity.** The City Map is now a sky-and-rolling-hills
+- **The world became a living Simulated Agent City.** The City Map is now a sky-and-rolling-hills
   landscape — sun, drifting clouds, **birds**, and **passing rain showers** — with each
   city sitting on the grass as a cluster of its real buildings (no more boxed tile-grid).
   Step into a city and it's a little town around a **roundabout**: offshoot roads,
@@ -54,8 +59,8 @@ one-command self-hosting, and an "Open in VS Code" button.
 
 ## [0.2.0] - 2026-06-07
 
-First tagged release of the SimCity Agent Hub — a local-first hub that
-orchestrates Claude Code agents behind a SimCity-themed UI (Cities → Buildings →
+First tagged release of the Simulated Agent City Hub — a local-first hub that
+orchestrates Claude Code agents behind a Simulated Agent City-themed UI (Cities → Buildings →
 People). Everything below ships in this release.
 
 - **Per-citizen streaming chat (the foundation).** Each agent streams its reply

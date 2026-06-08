@@ -251,7 +251,7 @@ export default function App() {
 
       <main className="main">
         <header className="topbar">
-          <span className="brand">🏙 SimCity Agent Hub</span>
+          <span className="brand">🏙 Simulated Agent City Hub</span>
           <nav className="crumbs">
             <button className="crumb-home" onClick={goHome}>🗺 Map</button>
             {city && <><span className="crumb-sep">▸</span><button onClick={() => { setBuildingId(null); setPersonId(null); }}>{city.name}</button></>}

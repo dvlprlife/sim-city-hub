@@ -3,7 +3,7 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Local-first, SimCity-themed hub for orchestrating Claude Code agents.",
+  "description": "Local-first, Simulated Agent City-themed hub for orchestrating Claude Code agents.",
   "license": "MIT",
   "engines": {
     "node": ">=22.5.0"

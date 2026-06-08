@@ -1,4 +1,4 @@
-// SimCity Agent Hub — Express + ws on one port. Mounts /api/* and the /ws
+// Simulated Agent City Hub — Express + ws on one port. Mounts /api/* and the /ws
 // WebSocket. In production it also static-serves the built Vite frontend.
 import 'dotenv/config';
 import http from 'node:http';
@@ -91,5 +91,5 @@ const stopHeartbeat = startHeartbeat();
 wss.on('close', stopHeartbeat);
 
 server.listen(PORT, () => {
-  console.log(`🏙  SimCity Agent Hub listening on http://localhost:${PORT}`);
+  console.log(`🏙  Simulated Agent City Hub listening on http://localhost:${PORT}`);
 });

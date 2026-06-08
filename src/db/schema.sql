@@ -1,4 +1,4 @@
--- SimCity Agent Hub schema. Idempotent — applied on every boot.
+-- Simulated Agent City Hub schema. Idempotent — applied on every boot.
 -- node:sqlite, WAL mode (set in database.js).
 
 CREATE TABLE IF NOT EXISTS tasks (
