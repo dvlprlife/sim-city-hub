@@ -238,7 +238,7 @@ export default function ConfigPanel({ allPeople = [], onSaved }) {
             </ol>
             {available.length > 0 && (
               <div className="config-add-member">
-                <select value="" onChange={(e) => addMember(city.id, e.target.value)}>
+                <select aria-label="Add citizen to roster" value="" onChange={(e) => addMember(city.id, e.target.value)}>
                   <option value="">+ Add citizen…</option>
                   {available.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.id})</option>)}
                 </select>

@@ -19,7 +19,7 @@ export default function PersonPicker({
   return (
     <div className="picker">
       <div className="picker-head">Workspace</div>
-      <select value={selectedBuildingId || ''} onChange={(e) => onSelectBuilding(e.target.value)}>
+      <select aria-label="Workspace" value={selectedBuildingId || ''} onChange={(e) => onSelectBuilding(e.target.value)}>
         {(buildings || []).map((b) => (
           <option key={b.id} value={b.id}>{b.name}</option>
         ))}
