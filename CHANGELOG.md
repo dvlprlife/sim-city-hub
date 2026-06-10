@@ -7,6 +7,13 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **The run-history panel now shows errors.** A failed history fetch or a failed
+  "Clear finished runs" displays an error message in the panel instead of being
+  silently swallowed (which left an empty-looking list or an unexplained revert).
+- **Fixed a stale-diff race in the Changes panel.** Rapidly clicking between
+  changed files could render the previous file's diff under the new file's
+  name if the responses arrived out of order; the panel now applies only the
+  latest request's response.
 - **Accessibility:** the usage time-window filter, the history person/city/status
   filters, the workspace picker, and the roster's add-citizen picker now carry
   `aria-label`s, so screen readers announce what each `<select>` controls.

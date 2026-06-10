@@ -19,13 +19,14 @@ export default function AgentHistory({ reload, people = [], cities = [] }) {
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [openRunId, setOpenRunId] = useState(null);
+  const [error, setError] = useState(null);
 
   // Clear finished runs (backend never deletes an in-flight one), then refresh.
   const doClear = () => {
     setClearing(true);
     api.clearHistory()
       .then(() => { setConfirmClear(false); setLocalReload((n) => n + 1); })
-      .catch(() => {})
+      .catch((e) => { setConfirmClear(false); setError(`Clear failed: ${e.message}`); })
       .finally(() => setClearing(false));
   };
 
@@ -43,7 +44,7 @@ export default function AgentHistory({ reload, people = [], cities = [] }) {
       cityId: cityId || undefined,
       status: status || undefined,
       limit: 50,
-    }).then(setRuns).catch(() => {});
+    }).then((rs) => { setRuns(rs); setError(null); }).catch((e) => setError(e.message));
   }, [debouncedQ, personId, cityId, status, reload, localReload]);
 
   const filtered = Boolean(q || personId || cityId || status);
@@ -88,6 +89,7 @@ export default function AgentHistory({ reload, people = [], cities = [] }) {
           </select>
         </div>
       </div>
+      {error && <div className="error hist-error">{error}</div>}
       <ul>
         {runs.map((r) => (
           <li key={r.run_id} className={`run run-${r.status}`}>
