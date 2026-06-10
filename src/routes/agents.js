@@ -1,13 +1,9 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
-import { spawnAgent, cancelAgent, retryRun } from '../services/agent.js';
+import { spawnAgent, cancelAgent, retryRun, SAFE_ID } from '../services/agent.js';
 import { getActiveRuns, getHistory, getRun, getRunEvents, getUsage, getTreasury, clearHistory } from '../services/agent/history.js';
 
 const router = Router();
-
-// Client-supplied ids that reach a temp-file path (runId) or a CLI arg (sessionId)
-// must be plain tokens — no path separators, dots, or shell metacharacters.
-const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 router.post('/spawn', (req, res) => {
   try {

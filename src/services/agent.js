@@ -2,9 +2,7 @@
 // spawnAgent, cancelAgent, retryRun. See CLAUDE.md for the load-bearing spawn rules.
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { writeFileSync, unlink, existsSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
+import { writeFileSync, unlink, rmSync, existsSync } from 'node:fs';
 
 import db from '../db/database.js';
 import { broadcast } from '../broadcast.js';
@@ -15,7 +13,14 @@ import { buildMcpConfig } from './agent/mcp.js';
 import { buildSpawnCommand, buildSpawnEnv } from './agent/runtime.js';
 import { createStreamParser } from './agent/stream.js';
 import { summarizeForHandoff, summarizeWithHaiku, shouldUseHaikuSummary } from './agent/handoff.js';
+import { agentTmpFile } from './agent/tmp.js';
 import { runQueued } from './queue.js';
+
+// Ids that reach a temp-file name (runId) or a CLI arg (sessionId) must be
+// plain tokens — no path separators, dots, or shell metacharacters. The routes
+// validate client input against this; spawnAgent re-checks runId at its own
+// boundary so internal callers can't bypass it either.
+export const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 // runId -> { child, tmpFiles, seq, cancelled, queued, release, forkSpec }
 // A run is registered here the moment it is accepted (status 'queued'), before
@@ -51,6 +56,13 @@ export function spawnAgent(opts) {
     parentRunId,
   } = opts;
 
+  // runId names the temp files below — reject anything that isn't a plain
+  // token before it can reach a path expression. The check tests the same
+  // binding the paths use (not an inline String() wrapper) so static analysis
+  // recognizes it as the sanitizer for those sinks.
+  const runToken = String(runId);
+  if (!SAFE_ID.test(runToken)) throw new Error(`Invalid runId: ${runId}`);
+
   const person = getPerson(personId);
   if (!person) throw new Error(`Unknown person: ${personId}`);
 
@@ -84,30 +96,34 @@ export function spawnAgent(opts) {
   // and its failure-cleanup below would delete the live run's row.
   if (running.has(runId)) throw new Error(`Run already in progress: ${runId}`);
 
-  // 2. build system prompt -> temp file (file path avoids Windows cmdline limits)
-  const systemPrompt = buildSystemPrompt({ personId, city, building, cwd, port });
-  const systemPromptFile = path.join(os.tmpdir(), `hub-sys-${runId}.md`);
-  writeFileSync(systemPromptFile, systemPrompt, 'utf8');
-
-  // 3. build merged MCP config -> temp file (or null when there are no MCPs)
-  const mcpConfigFile = buildMcpConfig({ runId, person, city });
-
-  const tmpFiles = [systemPromptFile];
-  if (mcpConfigFile) tmpFiles.push(mcpConfigFile);
-
-  // 4 & 5. Persist the queued row and build the spawn command. The temp files
-  //    above are already on disk; if either step throws (most plausibly a
-  //    duplicate client-supplied runId colliding on the PK) the run is never
-  //    registered, so finalize() can't reach it to clean up — unlink the temp
-  //    files and undo a half-inserted row here before rethrowing.
+  // 2–5. Build the temp files, persist the queued row, and build the spawn
+  //    command. Everything sits inside one cleanup scope: if any step throws
+  //    (a bad mcps shape in a hand-edited manifest, a full temp disk, or most
+  //    plausibly a duplicate client-supplied runId colliding on the PK) the
+  //    run is never registered, so finalize() can't reach it to clean up —
+  //    unlink whatever temp files were created and undo a half-inserted row
+  //    here before rethrowing. tmpFiles gains each path as it's written so
+  //    the catch only ever removes files this call produced.
+  const tmpFiles = [];
   let command;
   let args;
   let shell;
   let inserted = false;
   try {
-    // The queued row flips to 'running' the instant the CLI child forks (see
-    // startChild). The concurrency limiter may hold it here when
-    // HUB_MAX_CONCURRENT children are already busy.
+    // 2. build system prompt -> temp file (file path avoids Windows cmdline limits)
+    const systemPrompt = buildSystemPrompt({ personId, city, building, cwd, port });
+    const systemPromptFile = agentTmpFile(`hub-sys-${runToken}.md`);
+    tmpFiles.push(systemPromptFile);
+    writeFileSync(systemPromptFile, systemPrompt, 'utf8');
+
+    // 3. build merged MCP config -> temp file (or null when there are no MCPs).
+    // runToken (validated above) is what names the file inside buildMcpConfig.
+    const mcpConfigFile = buildMcpConfig({ runId: runToken, person, city });
+    if (mcpConfigFile) tmpFiles.push(mcpConfigFile);
+
+    // 4. persist the queued row. It flips to 'running' the instant the CLI
+    // child forks (see startChild). The concurrency limiter may hold it here
+    // when HUB_MAX_CONCURRENT children are already busy.
     db.prepare(
       `INSERT INTO agent_runs (run_id, person_id, city_id, building_id, cwd, prompt, model, status, session_id, parent_run_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'queued', ?, ?)`,
@@ -124,7 +140,7 @@ export function spawnAgent(opts) {
     );
     inserted = true;
 
-    // File-path flags dodge Windows cmdline limits.
+    // 5. build the spawn command. File-path flags dodge Windows cmdline limits.
     ({ command, args, shell } = buildSpawnCommand({
       modelId: modelIdStr,
       effort,
@@ -134,10 +150,14 @@ export function spawnAgent(opts) {
     }));
   } catch (err) {
     // The temp-file names are derived from runId and (per the in-flight guard
-    // above) belong to this call, so they're safe to remove. Only delete the run
-    // row if WE inserted it — a thrown INSERT means the row is someone else's
-    // (an existing/finished run that collided on the PK), so leave it.
-    for (const f of tmpFiles) unlink(f, () => {});
+    // above) belong to this call, so they're safe to remove. Sync removal so
+    // the caller's error response never races a pending unlink (this path is
+    // cold). Only delete the run row if WE inserted it — a thrown INSERT means
+    // the row is someone else's (an existing/finished run that collided on the
+    // PK), so leave it.
+    for (const f of tmpFiles) {
+      try { rmSync(f, { force: true }); } catch { /* best effort */ }
+    }
     if (inserted) db.prepare('DELETE FROM agent_runs WHERE run_id = ?').run(runId);
     throw err;
   }

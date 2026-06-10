@@ -7,9 +7,8 @@
 import { spawn } from 'node:child_process';
 import { writeFileSync, unlink, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import os from 'node:os';
-import path from 'node:path';
 import simpleGit from 'simple-git';
+import { agentTmpFile } from './agent/tmp.js';
 
 const PROTECTED = new Set(['main', 'master']);
 
@@ -131,7 +130,8 @@ export async function openPr(repoPath, { title, body = '', base } = {}) {
   }
 
   // Body via a temp file: dodges command-line length limits and quoting.
-  const bodyFile = path.join(os.tmpdir(), `hub-pr-${randomUUID()}.md`);
+  // Lives in the hub's private temp dir (see agent/tmp.js), not the shared one.
+  const bodyFile = agentTmpFile(`hub-pr-${randomUUID()}.md`);
   writeFileSync(bodyFile, body, 'utf8');
   const args = ['pr', 'create', '--title', title, '--body-file', bodyFile];
   if (base && String(base).trim()) args.push('--base', String(base).trim());
