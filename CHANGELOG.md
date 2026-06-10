@@ -12,7 +12,10 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
   written (e.g. a non-array `mcps` in a hand-edited `manifest.json` or
   `cities.json`), the temp file was stranded in the OS temp dir and the UI
   showed a baffling "… is not iterable". Setup failures now clean up after
-  themselves and report "person/city mcps must be an array".
+  themselves and report "person/city mcps must be an array". The hub's
+  transient files (system prompts, MCP configs, PR bodies) also moved from the
+  shared OS temp dir into a private, owner-only directory, and run ids are
+  re-validated at the spawn boundary.
 - **The run-history panel now shows errors.** A failed history fetch or a failed
   "Clear finished runs" displays an error message in the panel instead of being
   silently swallowed (which left an empty-looking list or an unexplained revert).

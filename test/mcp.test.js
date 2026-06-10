@@ -6,11 +6,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { PEOPLE_DIR } from '../src/paths.js';
 import { ensureSeeded } from '../src/services/seed.js';
 import { buildMcpConfig } from '../src/services/agent/mcp.js';
+import { AGENT_TMP_DIR } from '../src/services/agent/tmp.js';
 import { spawnAgent } from '../src/services/agent.js';
 
 ensureSeeded();
@@ -49,12 +49,12 @@ test('a spawn that fails during setup leaves no temp files behind', () => {
   // A person with a non-array mcps, written straight to disk the way a hand
   // edit would be (bypassing validateManifest). spawnAgent writes the system
   // prompt temp file BEFORE building the MCP config, so the mcps throw used to
-  // strand hub-sys-<runId>.md in the OS temp dir.
+  // strand hub-sys-<runId>.md in the temp dir.
   const personId = 'rt-bad-mcps';
   const runId = 'rt-leak-check';
   const dir = path.join(PEOPLE_DIR, personId);
-  const sysFile = path.join(os.tmpdir(), `hub-sys-${runId}.md`);
-  const mcpFile = path.join(os.tmpdir(), `hub-mcp-${runId}.json`);
+  const sysFile = path.join(AGENT_TMP_DIR, `hub-sys-${runId}.md`);
+  const mcpFile = path.join(AGENT_TMP_DIR, `hub-mcp-${runId}.json`);
   try {
     mkdirSync(dir, { recursive: true });
     writeFileSync(path.join(dir, 'manifest.json'), JSON.stringify({
@@ -69,5 +69,14 @@ test('a spawn that fails during setup leaves no temp files behind', () => {
     rmrf(dir);
     rmSync(sysFile, { force: true });
     rmSync(mcpFile, { force: true });
+  }
+});
+
+test('spawnAgent rejects a runId that is not a plain token, before touching anything', () => {
+  // runId names the temp files — path-ish input must die at the boundary
+  // (the route validates client input, but internal callers reach spawnAgent
+  // directly). The check runs before getPerson, so no fixture person needed.
+  for (const bad of ['../evil', 'a/b', 'a\\b', 'a.b', '', 'x'.repeat(129)]) {
+    assert.throws(() => spawnAgent({ runId: bad, personId: 'rt-nobody' }), /Invalid runId/);
   }
 });

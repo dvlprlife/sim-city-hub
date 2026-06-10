@@ -3,8 +3,6 @@
 import { randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { writeFileSync, unlink, rmSync, existsSync } from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 
 import db from '../db/database.js';
 import { broadcast } from '../broadcast.js';
@@ -15,7 +13,14 @@ import { buildMcpConfig } from './agent/mcp.js';
 import { buildSpawnCommand, buildSpawnEnv } from './agent/runtime.js';
 import { createStreamParser } from './agent/stream.js';
 import { summarizeForHandoff, summarizeWithHaiku, shouldUseHaikuSummary } from './agent/handoff.js';
+import { agentTmpFile } from './agent/tmp.js';
 import { runQueued } from './queue.js';
+
+// Ids that reach a temp-file name (runId) or a CLI arg (sessionId) must be
+// plain tokens — no path separators, dots, or shell metacharacters. The routes
+// validate client input against this; spawnAgent re-checks runId at its own
+// boundary so internal callers can't bypass it either.
+export const SAFE_ID = /^[A-Za-z0-9_-]{1,128}$/;
 
 // runId -> { child, tmpFiles, seq, cancelled, queued, release, forkSpec }
 // A run is registered here the moment it is accepted (status 'queued'), before
@@ -50,6 +55,10 @@ export function spawnAgent(opts) {
     sessionId,
     parentRunId,
   } = opts;
+
+  // runId names the temp files below — reject anything that isn't a plain
+  // token before it can reach a path expression.
+  if (!SAFE_ID.test(String(runId))) throw new Error(`Invalid runId: ${runId}`);
 
   const person = getPerson(personId);
   if (!person) throw new Error(`Unknown person: ${personId}`);
@@ -100,7 +109,7 @@ export function spawnAgent(opts) {
   try {
     // 2. build system prompt -> temp file (file path avoids Windows cmdline limits)
     const systemPrompt = buildSystemPrompt({ personId, city, building, cwd, port });
-    const systemPromptFile = path.join(os.tmpdir(), `hub-sys-${runId}.md`);
+    const systemPromptFile = agentTmpFile(`hub-sys-${runId}.md`);
     tmpFiles.push(systemPromptFile);
     writeFileSync(systemPromptFile, systemPrompt, 'utf8');
 

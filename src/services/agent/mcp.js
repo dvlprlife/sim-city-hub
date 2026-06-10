@@ -8,6 +8,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { agentTmpFile } from './tmp.js';
 
 function readMcpServersFrom(filePath) {
   try {
@@ -60,7 +61,7 @@ export function buildMcpConfig({ runId, person, city }) {
 
   if (Object.keys(merged).length === 0) return null;
 
-  const file = path.join(os.tmpdir(), `hub-mcp-${runId}.json`);
+  const file = agentTmpFile(`hub-mcp-${runId}.json`);
   writeFileSync(file, JSON.stringify({ mcpServers: merged }, null, 2), 'utf8');
   return file;
 }
