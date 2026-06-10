@@ -39,8 +39,10 @@ test('buildMcpConfig rejects a non-array mcps with a clear error (hand-edited da
   assert.throws(() => buildMcpConfig({ runId: 'rt-mcp-bad', person: { mcps: {} } }), /person mcps must be an array/);
   assert.throws(() => buildMcpConfig({ runId: 'rt-mcp-bad', person: { mcps: 'oops' } }), /person mcps must be an array/);
   assert.throws(() => buildMcpConfig({ runId: 'rt-mcp-bad', city: { mcps: {} } }), /city mcps must be an array/);
-  // null/undefined mcps stay fine.
-  buildMcpConfig({ runId: 'rt-mcp-bad', person: { mcps: null }, city: {} });
+  // null/undefined mcps stay fine. (On a machine with global MCPs this writes
+  // a real merged file — remove it rather than leak from the leak-fix's test.)
+  const file = buildMcpConfig({ runId: 'rt-mcp-bad', person: { mcps: null }, city: {} });
+  if (file) unlinkSync(file);
 });
 
 test('a spawn that fails during setup leaves no temp files behind', () => {
