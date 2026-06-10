@@ -36,15 +36,21 @@ export default function AgentHistory({ reload, people = [], cities = [] }) {
     return () => clearTimeout(t);
   }, [q]);
 
-  // Fetch on filter change, manual refresh, or external reload.
+  // Fetch on filter change, manual refresh, or external reload. The stale flag
+  // keeps an out-of-order response (rapid filter changes — only the text query
+  // is debounced) from overwriting the latest one's results.
   useEffect(() => {
+    let stale = false;
     api.history({
       q: debouncedQ || undefined,
       personId: personId || undefined,
       cityId: cityId || undefined,
       status: status || undefined,
       limit: 50,
-    }).then((rs) => { setRuns(rs); setError(null); }).catch((e) => setError(e.message));
+    })
+      .then((rs) => { if (!stale) { setRuns(rs); setError(null); } })
+      .catch((e) => { if (!stale) setError(e.message); });
+    return () => { stale = true; };
   }, [debouncedQ, personId, cityId, status, reload, localReload]);
 
   const filtered = Boolean(q || personId || cityId || status);
