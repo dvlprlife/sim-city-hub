@@ -74,15 +74,15 @@ export default function AgentHistory({ reload, people = [], cities = [] }) {
           onChange={(e) => setQ(e.target.value)}
         />
         <div className="hist-selects">
-          <select value={personId} onChange={(e) => setPersonId(e.target.value)}>
+          <select aria-label="Filter by person" value={personId} onChange={(e) => setPersonId(e.target.value)}>
             <option value="">All people</option>
             {people.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
-          <select value={cityId} onChange={(e) => setCityId(e.target.value)}>
+          <select aria-label="Filter by city" value={cityId} onChange={(e) => setCityId(e.target.value)}>
             <option value="">All cities</option>
             {cities.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select aria-label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)}>
             <option value="">Any status</option>
             {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>

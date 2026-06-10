@@ -58,7 +58,7 @@ export default function UsagePanel() {
     <div className="usage">
       <div className="usage-head">
         <h2 className="view-title">Usage</h2>
-        <select value={windowDays} onChange={(e) => setWindowDays(Number(e.target.value))}>
+        <select aria-label="Time window" value={windowDays} onChange={(e) => setWindowDays(Number(e.target.value))}>
           {WINDOWS.map((w) => <option key={w.label} value={w.days}>{w.label}</option>)}
         </select>
       </div>

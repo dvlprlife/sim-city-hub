@@ -7,6 +7,9 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **Accessibility:** the usage time-window filter, the history person/city/status
+  filters, the workspace picker, and the roster's add-citizen picker now carry
+  `aria-label`s, so screen readers announce what each `<select>` controls.
 - **Renamed the project to Simulated Agent City Hub.** The display name and the
   city-theme references were updated throughout the UI, docs, and code comments.
   (Internal slugs — the package names, the database file, and the repo URL — are
