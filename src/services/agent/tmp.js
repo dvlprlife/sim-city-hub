@@ -16,7 +16,10 @@ export const AGENT_TMP_DIR = mkdtempSync(path.join(os.tmpdir(), PREFIX));
 // instance's sweep racing an idle one), the next spawn repairs it instead of
 // every spawn failing with ENOENT until restart.
 export function agentTmpFile(name) {
-  mkdirSync(AGENT_TMP_DIR, { recursive: true });
+  // mode matters: without it a recreate would be 0755, silently dropping the
+  // owner-only guarantee for everything written afterwards. No-op when the
+  // dir already exists; ignored where modes don't apply (Windows).
+  mkdirSync(AGENT_TMP_DIR, { recursive: true, mode: 0o700 });
   return path.join(AGENT_TMP_DIR, name);
 }
 

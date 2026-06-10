@@ -57,8 +57,11 @@ export function spawnAgent(opts) {
   } = opts;
 
   // runId names the temp files below — reject anything that isn't a plain
-  // token before it can reach a path expression.
-  if (!SAFE_ID.test(String(runId))) throw new Error(`Invalid runId: ${runId}`);
+  // token before it can reach a path expression. The check tests the same
+  // binding the paths use (not an inline String() wrapper) so static analysis
+  // recognizes it as the sanitizer for those sinks.
+  const runToken = String(runId);
+  if (!SAFE_ID.test(runToken)) throw new Error(`Invalid runId: ${runId}`);
 
   const person = getPerson(personId);
   if (!person) throw new Error(`Unknown person: ${personId}`);
@@ -109,12 +112,13 @@ export function spawnAgent(opts) {
   try {
     // 2. build system prompt -> temp file (file path avoids Windows cmdline limits)
     const systemPrompt = buildSystemPrompt({ personId, city, building, cwd, port });
-    const systemPromptFile = agentTmpFile(`hub-sys-${runId}.md`);
+    const systemPromptFile = agentTmpFile(`hub-sys-${runToken}.md`);
     tmpFiles.push(systemPromptFile);
     writeFileSync(systemPromptFile, systemPrompt, 'utf8');
 
-    // 3. build merged MCP config -> temp file (or null when there are no MCPs)
-    const mcpConfigFile = buildMcpConfig({ runId, person, city });
+    // 3. build merged MCP config -> temp file (or null when there are no MCPs).
+    // runToken (validated above) is what names the file inside buildMcpConfig.
+    const mcpConfigFile = buildMcpConfig({ runId: runToken, person, city });
     if (mcpConfigFile) tmpFiles.push(mcpConfigFile);
 
     // 4. persist the queued row. It flips to 'running' the instant the CLI
