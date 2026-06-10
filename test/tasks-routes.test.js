@@ -69,6 +69,7 @@ test('GET / coerces a repeated query key to its first value instead of a 500', a
   const res = await fetch(`${base}?cityId=rt-city-a&cityId=rt-city-b`);
   assert.equal(res.status, 200);
   const rows = await res.json();
+  assert.ok(rows.length > 0, 'the rt-city-a rows from the previous test are visible');
   assert.ok(rows.every((t) => t.city_id === 'rt-city-a'), 'filters on the first value');
 });
 
