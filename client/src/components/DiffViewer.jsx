@@ -41,23 +41,25 @@ export default function DiffViewer({ cityId, buildingId }) {
   const [diff, setDiff] = useState(null);
   const [diffError, setDiffError] = useState(null);
   const [loadingDiff, setLoadingDiff] = useState(false);
-  // Request counter so an out-of-order response (rapid file clicks, a refresh
+  // Request counters so an out-of-order response (rapid file clicks, a refresh
   // while a diff is in flight, or a quick building switch racing two statuses)
   // can't overwrite the current state. Same pattern as PathPicker's validate
-  // guard. One counter covers both fetches: a diff can only be opened after a
-  // status has landed, so an openDiff bump never invalidates a live gitStatus.
+  // guard. Separate counters per fetch: refresh() bumps both (a refresh
+  // supersedes any in-flight diff too), while openDiff() bumps only its own.
+  const statusReq = useRef(0);
   const diffReq = useRef(0);
 
   const refresh = useCallback(() => {
-    const id = ++diffReq.current;
+    const id = ++statusReq.current;
+    diffReq.current += 1;
     setError(null);
     setStatus(null);
     setOpenFile(null);
     setDiff(null);
     setDiffError(null);
     api.gitStatus({ cityId, buildingId })
-      .then((s) => { if (id === diffReq.current) setStatus(s); })
-      .catch((e) => { if (id === diffReq.current) setError(e.message); });
+      .then((s) => { if (id === statusReq.current) setStatus(s); })
+      .catch((e) => { if (id === statusReq.current) setError(e.message); });
   }, [cityId, buildingId]);
 
   useEffect(() => { refresh(); }, [refresh]);
