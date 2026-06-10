@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../hooks/useApi.js';
 import GitHubPanel from './GitHubPanel.jsx';
 
@@ -41,8 +41,13 @@ export default function DiffViewer({ cityId, buildingId }) {
   const [diff, setDiff] = useState(null);
   const [diffError, setDiffError] = useState(null);
   const [loadingDiff, setLoadingDiff] = useState(false);
+  // Request counter so an out-of-order gitDiff response (rapid file clicks, or
+  // a refresh while one is in flight) can't overwrite the current file's diff.
+  // Same pattern as PathPicker's validate guard.
+  const diffReq = useRef(0);
 
   const refresh = useCallback(() => {
+    diffReq.current += 1;
     setError(null);
     setStatus(null);
     setOpenFile(null);
@@ -54,14 +59,15 @@ export default function DiffViewer({ cityId, buildingId }) {
   useEffect(() => { refresh(); }, [refresh]);
 
   const openDiff = (file) => {
+    const id = ++diffReq.current;
     setOpenFile(file);
     setLoadingDiff(true);
     setDiff(null);
     setDiffError(null);
     api.gitDiff({ cityId, buildingId, file })
-      .then((r) => setDiff(r.diff || ''))
-      .catch((e) => setDiffError(e.message))
-      .finally(() => setLoadingDiff(false));
+      .then((r) => { if (id === diffReq.current) setDiff(r.diff || ''); })
+      .catch((e) => { if (id === diffReq.current) setDiffError(e.message); })
+      .finally(() => { if (id === diffReq.current) setLoadingDiff(false); });
   };
 
   if (error) {
