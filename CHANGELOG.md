@@ -7,6 +7,12 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **The branch/commit/push/PR panel now runs one action at a time.** Starting a
+  second git action while another was still in flight raced the panel's state:
+  the first action to finish re-enabled the other's still-running button, the
+  result/error messages overwrote each other, and the two operations collided
+  on the repo's index lock. All action buttons are now disabled while any
+  action runs.
 - **A failed spawn no longer leaks temp files, and a hand-edited bad `mcps`
   gives a clear error.** If spawn setup failed after the system prompt was
   written (e.g. a non-array `mcps` in a hand-edited `manifest.json` or
