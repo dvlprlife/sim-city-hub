@@ -7,6 +7,11 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **On the City Map, the sun now sets at night and hides when it rains.** The
+  landscape sun used to stay lit straight through the night and shine through
+  passing rain showers; now it sets behind the hills at dusk and rises at dawn,
+  and dark storm clouds roll in just ahead of each shower (the white clouds
+  thinning out) and cover the sun while it pours.
 - **The branch/commit/push/PR panel now runs one action at a time.** Starting a
   second git action while another was still in flight raced the panel's state:
   the first action to finish re-enabled the other's still-running button, the
