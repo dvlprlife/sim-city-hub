@@ -13,11 +13,13 @@ function ConfirmButton({ label, confirmLabel, onConfirm, disabled, busy, danger 
   const cls = danger ? 'danger' : 'primary';
   if (busy) return <button className={cls} disabled>…</button>;
   if (armed) {
+    // Confirm honors `disabled` too: a button armed before another action
+    // started must not fire mid-flight (the panel's steps are serialized).
     return (
       <span className="gh-confirm">
         <span className="confirm-msg">{confirmLabel || 'Confirm?'}</span>
         <button className="ghost" onClick={() => setArmed(false)}>Cancel</button>
-        <button className={cls} onClick={() => { setArmed(false); onConfirm(); }}>Confirm</button>
+        <button className={cls} disabled={disabled} onClick={() => { setArmed(false); onConfirm(); }}>Confirm</button>
       </span>
     );
   }
@@ -49,6 +51,11 @@ export default function GitHubPanel({ cityId, buildingId, onChanged }) {
   useEffect(() => { loadInfo(); }, [loadInfo]);
 
   const act = async (key, fn, describe) => {
+    // One action at a time: overlapping requests would race on busy/result
+    // state (the first to finish un-busies the other's button) and collide on
+    // the repo's index lock anyway. The buttons below are disabled while any
+    // action runs; this guard backstops them.
+    if (busy) return;
     setBusy(key);
     setError(null);
     setResult(null);
@@ -101,7 +108,7 @@ export default function GitHubPanel({ cityId, buildingId, onChanged }) {
           label="Create / switch branch"
           confirmLabel={`Switch to "${branch.trim()}"?`}
           busy={busy === 'branch'}
-          disabled={!branch.trim()}
+          disabled={!branch.trim() || !!busy}
           onConfirm={() => act('branch', () => api.githubBranch({ cityId, buildingId, branch }), (r) => `On branch ${r.branch}${r.created ? ' (created)' : ''}.`)}
         />
       </div>
@@ -115,7 +122,7 @@ export default function GitHubPanel({ cityId, buildingId, onChanged }) {
           label={noChanges ? 'Nothing to commit' : 'Commit all changes'}
           confirmLabel="Commit all staged + unstaged changes?"
           busy={busy === 'commit'}
-          disabled={noChanges || !message.trim()}
+          disabled={noChanges || !message.trim() || !!busy}
           onConfirm={() => act('commit', () => api.githubCommit({ cityId, buildingId, message }), (r) => `Committed ${r.hash?.slice(0, 7)} — ${r.summary?.changes ?? 0} file(s).`)}
         />
       </div>
@@ -126,7 +133,7 @@ export default function GitHubPanel({ cityId, buildingId, onChanged }) {
           label={`Push ${info.branch}`}
           confirmLabel={`Push ${info.branch} to origin?`}
           busy={busy === 'push'}
-          disabled={info.isProtected}
+          disabled={info.isProtected || !!busy}
           onConfirm={() => act('push', () => api.githubPush({ cityId, buildingId }), (r) => `Pushed ${r.branch} to origin.`)}
         />
       </div>
@@ -149,7 +156,7 @@ export default function GitHubPanel({ cityId, buildingId, onChanged }) {
           label="Open pull request"
           confirmLabel="Open a PR on GitHub?"
           busy={busy === 'pr'}
-          disabled={!info.ghAuthed || !prTitle.trim()}
+          disabled={!info.ghAuthed || !prTitle.trim() || !!busy}
           onConfirm={() => act('pr', () => api.githubPr({ cityId, buildingId, title: prTitle, body: prBody, base: prBase }), (r) => (
             <>PR opened: <a href={r.url} target="_blank" rel="noreferrer">{r.url}</a></>
           ))}

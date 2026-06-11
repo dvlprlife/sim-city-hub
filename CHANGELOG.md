@@ -7,6 +7,12 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **The branch/commit/push/PR panel now runs one action at a time.** Starting a
+  second git action while another was still in flight raced the panel's state:
+  the first action to finish re-enabled the other's still-running button, the
+  result/error messages overwrote each other, and the two operations collided
+  on the repo's index lock. All action buttons are now disabled while any
+  action runs.
 - **A workspace deleted while a run waited in the queue no longer runs the
   agent in the hub's own folder.** Runs are validated at submit time, but a
   queued run whose workspace vanished before a concurrency slot freed up was
