@@ -33,9 +33,18 @@ export default function CityMap({ cities, onEnterCity, cityCounts = {}, onAddCit
       <h2 className="view-title">City Map</h2>
       <p className="view-sub">Click a city to enter, or the empty lot to add one.</p>
       <div className="landscape">
-        <span className="ls-sun" aria-hidden="true" />
+        {/* Sun rides two clocks at once: the wrapper sets/rises on the 100s
+            day/night cycle, the inner core dims on the 72s rain cycle when storm
+            clouds are overhead (nested so the two opacities multiply). */}
+        <span className="ls-sun" aria-hidden="true"><i className="ls-sun-core" /></span>
         <span className="ls-cloud ls-cloud-a" aria-hidden="true" />
         <span className="ls-cloud ls-cloud-b" aria-hidden="true" />
+
+        {/* Storm clouds roll in just ahead of the rain shower (same 72s cycle as
+            .ls-rain), darkening the sky and covering the sun while it pours. */}
+        <span className="ls-storm ls-storm-a" aria-hidden="true" />
+        <span className="ls-storm ls-storm-b" aria-hidden="true" />
+        <span className="ls-storm ls-storm-c" aria-hidden="true" />
 
         {/* Birds drifting across the sky (CSS-drawn ⌒⌒ silhouettes that flap). */}
         <span className="ls-bird" style={{ top: '14%', '--dur': '64s', '--delay': '-8s' }} aria-hidden="true"><i /></span>

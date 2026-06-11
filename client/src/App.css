@@ -142,11 +142,48 @@ body {
 .ls-hill-back { left: -6%; bottom: 44%; width: 56%; height: 22%; background: linear-gradient(#84bb70, #6fa75d); }
 .ls-hill-mid { right: -10%; bottom: 45%; width: 62%; height: 28%; background: linear-gradient(#79b266, #629d52); }
 .ls-hill-front { left: 24%; bottom: 45%; width: 52%; height: 20%; background: linear-gradient(#8cc079, #74ac62); }
-.ls-sun { position: absolute; top: 9%; right: 13%; width: 46px; height: 46px; border-radius: 50%; z-index: 0; background: radial-gradient(circle, #fff4b8 0%, #ffd23f 70%, #ffc21f 100%); box-shadow: 0 0 34px rgba(255,210,80,0.55); }
+/* Sun: the wrapper sets behind the hills at dusk and rises at dawn on the SAME
+   100s clock as the day/night tint (top sinks + fades to 0 through night); the
+   inner core dims on the SAME 72s clock as the rain shower so it reads as hidden
+   behind the storm clouds. Nesting keeps the two animations off each other's
+   `opacity` — they multiply instead of one overwriting the other. */
+.ls-sun { position: absolute; top: 9%; right: 13%; width: 46px; height: 46px; z-index: 0; animation: sun-cycle 100s linear infinite; }
+.ls-sun-core { display: block; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(circle, #fff4b8 0%, #ffd23f 70%, #ffc21f 100%); box-shadow: 0 0 34px rgba(255,210,80,0.55); animation: sun-dim 72s ease-in-out infinite; }
+@keyframes sun-cycle {
+  0%, 12% { top: 9%; opacity: 1; }     /* midday (tint clear 0–12%) */
+  30% { top: 30%; opacity: 0.9; }      /* dusk — sinking toward the hill line */
+  38%, 72% { top: 48%; opacity: 0; }   /* set; gone through night (tint 45–60%) */
+  78% { top: 30%; opacity: 0.9; }      /* dawn — rising back up */
+  90%, 100% { top: 9%; opacity: 1; }   /* climbed back to midday */
+}
+@keyframes sun-dim {
+  0%, 46% { opacity: 1; }     /* clear sky until the storm clouds arrive (~50%) */
+  56%, 88% { opacity: 0.15; } /* overcast through the shower (rain visible 52–86%) */
+  98%, 100% { opacity: 1; }
+}
 .ls-cloud { position: absolute; z-index: 0; height: 17px; background: rgba(255,255,255,0.92); border-radius: 20px; box-shadow: 17px 4px 0 -2px rgba(255,255,255,0.92), -15px 5px 0 -3px rgba(255,255,255,0.92); }
-.ls-cloud-a { top: 13%; left: 12%; width: 56px; animation: cloud-drift 120s linear infinite; }
-.ls-cloud-b { top: 22%; left: 52%; width: 44px; animation: cloud-drift 160s linear infinite; animation-delay: -70s; }
+/* The white fair-weather clouds thin out while the storm passes (cloud-fade runs
+   on the 72s rain clock; it animates opacity, cloud-drift animates transform, so
+   the two coexist on one element). */
+.ls-cloud-a { top: 13%; left: 12%; width: 56px; animation: cloud-drift 120s linear infinite, cloud-fade 72s ease-in-out infinite; }
+.ls-cloud-b { top: 22%; left: 52%; width: 44px; animation: cloud-drift 160s linear -70s infinite, cloud-fade 72s ease-in-out infinite; }
 @keyframes cloud-drift { from { transform: translateX(-70px); } to { transform: translateX(560px); } }
+@keyframes cloud-fade { 0%, 46% { opacity: 1; } 54%, 88% { opacity: 0.25; } 98%, 100% { opacity: 1; } }
+
+/* Storm clouds — the same pill + box-shadow-puff trick as .ls-cloud but slate
+   grey and heavier (a third top puff). They roll in from the left and fade up
+   just before the rain (by ~50%, rain shows at 52%) and clear by ~96%, on the
+   72s rain clock. ls-storm-a parks near the sun so the cover reads visually. */
+.ls-storm { position: absolute; z-index: 0; height: 19px; opacity: 0; background: rgba(96,108,126,0.95); border-radius: 20px; box-shadow: 19px 5px 0 -2px rgba(96,108,126,0.95), -17px 6px 0 -3px rgba(96,108,126,0.95), 4px -7px 0 -4px rgba(96,108,126,0.95); animation: storm-roll 72s ease-in-out infinite; }
+.ls-storm-a { top: 7%; right: 9%; width: 70px; }
+.ls-storm-b { top: 16%; left: 28%; width: 58px; animation-delay: -1.5s; }
+.ls-storm-c { top: 11%; left: 60%; width: 50px; animation-delay: -3s; }
+@keyframes storm-roll {
+  0%, 42% { opacity: 0; transform: translateX(-60px); }
+  50% { opacity: 1; transform: translateX(0); }       /* in before the rain at 52% */
+  88% { opacity: 1; transform: translateX(36px); }     /* slow drift while raining */
+  96%, 100% { opacity: 0; transform: translateX(80px); }
+}
 
 .ls-tree { position: absolute; z-index: 1; height: auto; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.3)); pointer-events: none; }
 .ls-tree-a { bottom: 31%; left: 9%; width: 36px; }
@@ -174,6 +211,7 @@ body {
 .landscape-night { position: absolute; inset: 0; z-index: 5; pointer-events: none; animation: daynight 100s linear infinite; }
 @media (prefers-reduced-motion: reduce) {
   .ls-cloud { animation: none; }
+  .ls-sun, .ls-sun-core { animation: none; } /* base styles = midday/clear, so it freezes risen */
   .ls-glow { animation: none; opacity: 0; }
   .ls-city.running .ls-glow { animation: none; opacity: 0.9; }
   .landscape-night { animation: none; background: rgba(10, 20, 60, 0); }
@@ -200,7 +238,7 @@ body {
 @keyframes rain-drop { from { top: -8%; } to { top: 108%; } }
 @keyframes rain-shower { 0%, 52% { opacity: 0; } 64%, 86% { opacity: 0.9; } 100% { opacity: 0; } }
 
-@media (prefers-reduced-motion: reduce) { .ls-bird, .ls-rain { display: none; } }
+@media (prefers-reduced-motion: reduce) { .ls-bird, .ls-rain, .ls-storm { display: none; } }
 
 /* Street lamps — pole + head + a warm glow that fades on while it's dark. Runs
    the SAME 100s timeline as the day/night cycle above, so lamps light at dusk
