@@ -7,6 +7,11 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **A workspace deleted while a run waited in the queue no longer runs the
+  agent in the hub's own folder.** Runs are validated at submit time, but a
+  queued run whose workspace vanished before a concurrency slot freed up was
+  silently started in the hub's root directory instead. The run now fails
+  with a clear error ("Workspace path no longer exists: …").
 - **A failed spawn no longer leaks temp files, and a hand-edited bad `mcps`
   gives a clear error.** If spawn setup failed after the system prompt was
   written (e.g. a non-array `mcps` in a hand-edited `manifest.json` or

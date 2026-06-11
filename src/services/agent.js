@@ -39,10 +39,6 @@ function persistEvent(runId, kind, payload) {
   );
 }
 
-function safeCwd(cwd) {
-  return cwd && existsSync(cwd) ? cwd : process.cwd();
-}
-
 export function spawnAgent(opts) {
   const {
     runId = randomUUID(),
@@ -71,12 +67,12 @@ export function spawnAgent(opts) {
   const { rootPath, port } = getConfig();
   const cwd = building?.absolutePath || rootPath || process.cwd();
 
-  // Reject non-existent workspaces up front. Without this, a placeholder
-  // building (e.g. REPLACE_WITH/... in cities.json) would slip past safeCwd,
-  // which silently falls back to process.cwd() (the hub root) — running the
-  // agent in the wrong directory with no warning. Throwing here (before the
-  // 'queued' INSERT below) leaves no orphan row; routes/agents.js turns it
-  // into a 400 and the UI shows '⚠ spawn failed: <message>'.
+  // Reject non-existent workspaces up front — a placeholder building (e.g.
+  // REPLACE_WITH/... in cities.json) must not reach the spawn. Throwing here
+  // (before the 'queued' INSERT below) leaves no orphan row; routes/agents.js
+  // turns it into a 400 and the UI shows '⚠ spawn failed: <message>'.
+  // startChild re-checks at fork time: a run can wait in the queue, and the
+  // workspace may vanish in the meantime.
   if (!existsSync(cwd)) {
     throw new Error(`Workspace path does not exist: ${cwd}. Set the building's absolutePath in cities.json.`);
   }
@@ -201,10 +197,23 @@ function startChild(runId) {
 
     try {
       const { command, args, shell, cwd, modelIdStr, prompt } = state.forkSpec;
+
+      // The workspace existed when the run was accepted (spawnAgent throws
+      // otherwise), but it may have been deleted/renamed while the run waited
+      // for a concurrency slot. Historically a safeCwd() helper papered over
+      // that by silently substituting process.cwd() — the hub's own repo —
+      // running the agent in the wrong codebase with no warning. Without it,
+      // spawn would die with an ambiguous "spawn ENOENT" (command or cwd?).
+      // Fail the run with a precise message instead; the catch below
+      // finalizes it as an error and the row never flips to 'running'.
+      if (!existsSync(cwd)) {
+        throw new Error(`Workspace path no longer exists: ${cwd} (deleted while the run was queued).`);
+      }
+
       db.prepare("UPDATE agent_runs SET status = 'running' WHERE run_id = ?").run(runId);
 
       const child = spawn(command, args, {
-        cwd: safeCwd(cwd),
+        cwd,
         env: buildSpawnEnv(),
         shell,
         windowsHide: true,
