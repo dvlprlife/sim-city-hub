@@ -23,17 +23,24 @@ export default function CityBuildings({ city, buildings, selectedBuildingId, onS
       <h2 className="view-title">{city?.name || 'City'} — Buildings</h2>
       <p className="view-sub">Click a building to enter it, or the blank lot to add one · drag to pan · scroll to zoom.</p>
       <IsoCanvas width={scene.width} height={scene.height} canvasClass="iso-field">
-        {/* Roads: offshoots, then the rotary ring over them, then the grass island.
-            Each road has a soft shoulder that blends into the field + asphalt. */}
+        {/* Roads: soft grass shoulder, a dark curb, the asphalt, then dashed lane
+            markings — offshoots first, the rotary ring over them, grass island last. */}
         <svg className="town-roads" width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`} aria-hidden="true">
           {scene.spokes.map((s, i) => (
             <line key={`sp-sh${i}`} className="road-shoulder" x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
           ))}
+          <circle className="road-shoulder" cx={cx} cy={cy} r={scene.rotaryR} />
+          {scene.spokes.map((s, i) => (
+            <line key={`sp-cb${i}`} className="road-curb" x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
+          ))}
+          <circle className="road-curb" cx={cx} cy={cy} r={scene.rotaryR} />
           {scene.spokes.map((s, i) => (
             <line key={`sp${i}`} className="road-asphalt" x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
           ))}
-          <circle className="road-shoulder" cx={cx} cy={cy} r={scene.rotaryR} />
           <circle className="road-asphalt" cx={cx} cy={cy} r={scene.rotaryR} />
+          {scene.spokes.map((s, i) => (
+            <line key={`sp-ln${i}`} className="road-line" x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} />
+          ))}
           <circle className="rotary-island" cx={cx} cy={cy} r={scene.islandR} />
         </svg>
 
@@ -59,8 +66,14 @@ export default function CityBuildings({ city, buildings, selectedBuildingId, onS
         {/* Cars drive through the rotary (offset-rotate: auto → turn with the road);
             pedestrians stroll the rotary sidewalk, upright. */}
         {scene.cars.map((c, i) => (
-          <span key={`car${i}`} className="town-car" style={{ offsetPath: `path('${scene.carPaths[i % scene.carPaths.length]}')`, color: c.color, '--dur': `${c.dur}s`, '--delay': `${c.delay}s` }} aria-hidden="true">
-            <span className="town-car-top" />
+          <span key={`car${i}`} className={`town-car${c.type === 'van' ? ' van' : ''}`} style={{ offsetPath: `path('${scene.carPaths[i % scene.carPaths.length]}')`, '--col': c.color, '--dur': `${c.dur}s`, '--delay': `${c.delay}s` }} aria-hidden="true">
+            <span className="tc-shadow" />
+            <span className="tc-wheel" />
+            <span className="tc-body" />
+            <span className="tc-roof" />
+            <span className="tc-glass" />
+            <span className="tc-lights" />
+            <span className="tc-tail" />
           </span>
         ))}
         {scene.peds.map((p, i) => (

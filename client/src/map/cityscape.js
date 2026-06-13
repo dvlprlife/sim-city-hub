@@ -103,10 +103,10 @@ export function buildRotaryTown(count) {
   }
 
   const cars = [
-    { color: '#e0b13a', dur: 18, delay: 0 },
-    { color: '#3d6fb0', dur: 23, delay: -7 },
-    { color: '#c44a3a', dur: 20, delay: -13 },
-    { color: '#4f9e6f', dur: 25, delay: -18 },
+    { color: '#e0b13a', type: 'sedan', dur: 18, delay: 0 },
+    { color: '#3d6fb0', type: 'van', dur: 23, delay: -7 },
+    { color: '#c44a3a', type: 'sedan', dur: 20, delay: -13 },
+    { color: '#4f9e6f', type: 'van', dur: 25, delay: -18 },
   ];
   const peds = [
     { shirt: '#c14b8a', dur: 34, delay: 0 },

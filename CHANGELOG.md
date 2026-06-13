@@ -7,6 +7,14 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **A city's roads and cars no longer look flat next to the buildings.** Inside a
+  city, the cars used to be flat colored pills and the roads plain grey strokes,
+  which clashed with the isometric building art. The cars are now little
+  dimensional vehicles — a lit body, a darker roof, a glass windshield, wheels
+  and a ground shadow, with sedan and van shapes — and the roads gained a curb
+  edge and dashed lane markings so they read as real streets. (The cars stay
+  CSS-drawn rather than imported sprites, so they still turn smoothly around the
+  roundabout and add no new assets.)
 - **On the City Map, the sun now sets at night and hides when it rains.** The
   landscape sun used to stay lit straight through the night and shine through
   passing rain showers; now it sets behind the hills at dusk and rises at dawn,
