@@ -26,4 +26,18 @@ describe('MarkdownRenderer', () => {
     expect(() => html('')).not.toThrow();
     expect(() => html(undefined)).not.toThrow();
   });
+
+  // Agent output is untrusted text. This path deliberately ships WITHOUT
+  // rehype-raw, so react-markdown escapes embedded HTML rather than mounting it —
+  // no sanitizer is in the loop for prose, and adding rehype-raw would put one
+  // there. Pinned so that change can't land unnoticed.
+  it('escapes embedded HTML instead of mounting it', () => {
+    const out = html('<img src=x onerror="alert(1)">\n\n<script>alert(2)</script>');
+    // No live element is created — the payload survives only as escaped text, so
+    // asserting on the raw substring would be wrong; assert on real tags.
+    expect(out).not.toMatch(/<img/i);
+    expect(out).not.toMatch(/<script/i);
+    expect(out).not.toMatch(/<[^>]+\son\w+=/i);   // no tag carries an event handler
+    expect(out).toContain('&lt;img');             // shown to the user as text
+  });
 });
