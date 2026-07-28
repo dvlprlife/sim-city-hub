@@ -11,6 +11,7 @@ import CitySidebar from './components/CitySidebar.jsx';
 import CityMap from './components/CityMap.jsx';
 import CityBuildings from './components/CityBuildings.jsx';
 import CityInterior from './components/CityInterior.jsx';
+import CityLot from './components/CityLot.jsx';
 // Optional pixel-art Buildings view — lazy so its Sunnyside asset loading never
 // touches the default bundle / a fresh clone (assets are git-ignored, see README).
 const CityBuildingsPixel = lazy(() => import('./components/CityBuildingsPixel.jsx'));
@@ -52,6 +53,9 @@ export default function App() {
   const [creatingCity, setCreatingCity] = useState(false);
   const [creatingBuildingCityId, setCreatingBuildingCityId] = useState(null);
   const [pixelView, setPixelView] = useState(null);   // null = auto (pixel when the pack is present)
+  // Citizens view: the top-down lot (default) or the original office floor.
+  const [lotView, setLotView] = useState(true);
+  const showLot = lotView;
   const ssAvailable = useSunnysideAvailable();        // is the Sunnyside pack present?
   // Default to the pixel-art view when the assets exist; the toggle overrides it.
   const showPixel = ssAvailable === true && (pixelView === null ? true : pixelView);
@@ -353,16 +357,41 @@ export default function App() {
           )}
 
           {!person && city && buildingId && (
-            <CityInterior
-              cityId={city.id}
-              city={city}
-              people={people}
-              selectedPersonId={personId}
-              onSelectPerson={selectPerson}
-              personCounts={activeRuns.personCounts}
-              emotes={emotes.emotes}
-              onAddPerson={onAddPerson}
-            />
+            <div className="map-stage">
+              {/* Same two-view toggle as the Buildings view above: the top-down
+                  lot, or the original isometric office floor. */}
+              <button
+                type="button"
+                className="map-stage-toggle"
+                onClick={() => setLotView(!showLot)}
+                title={showLot ? 'Office view' : 'Top-down view'}
+              >
+                {showLot ? '◰ pixel' : '◱ 2D'}
+              </button>
+              {showLot ? (
+                <CityLot
+                  cityId={city.id}
+                  city={city}
+                  people={people}
+                  selectedPersonId={personId}
+                  onSelectPerson={selectPerson}
+                  personCounts={activeRuns.personCounts}
+                  emotes={emotes.emotes}
+                  onAddPerson={onAddPerson}
+                />
+              ) : (
+                <CityInterior
+                  cityId={city.id}
+                  city={city}
+                  people={people}
+                  selectedPersonId={personId}
+                  onSelectPerson={selectPerson}
+                  personCounts={activeRuns.personCounts}
+                  emotes={emotes.emotes}
+                  onAddPerson={onAddPerson}
+                />
+              )}
+            </div>
           )}
 
           {person && (

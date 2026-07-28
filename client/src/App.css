@@ -395,6 +395,82 @@ body {
 .wall-left { background: linear-gradient(180deg, #c4b99d 0%, #a99c78 100%); }
 .office-wall::before { content: ''; position: absolute; left: 8%; right: 8%; top: 24%; height: 30%; background: repeating-linear-gradient(90deg, #a9d6ec 0 16px, #79b0cf 16px 20px); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
 
+/* ---- Citizens view, top-down (CityLot) ----
+   One building's lot from above, in the rotary town's flat visual language: it
+   reuses .town-tree / .town-bush / .street-lamp / the road classes, and adds the
+   building shell, desks and strolling citizens. */
+
+/* Walls enclosing a floor. Drawn roofless — the desks inside are the point. */
+.lot-building { position: absolute; border-style: solid; border-color: #7d6136; border-radius: 6px; background: transparent; box-shadow: 0 6px 18px rgba(0,0,0,0.45), inset 0 0 0 2px rgba(0,0,0,0.22); pointer-events: none; }
+.lot-floor { position: absolute; inset: 0; background: linear-gradient(155deg, #c9b189 0%, #b3986d 100%); }
+.lot-floor::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, rgba(0,0,0,0.05) 0 34px, transparent 34px 68px); }
+/* A gap in the front wall, so the driveway reads as reaching a door. */
+.lot-door { position: absolute; height: 15px; transform: translate(-50%, -66%); background: #6d543a; border-radius: 2px; pointer-events: none; }
+
+/* Indoor furnishing revealed under the roof. */
+.lot-cabinet { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 62px; height: 22px; pointer-events: none; background: linear-gradient(#9a7145, #7b5730); border-radius: 3px; box-shadow: 0 3px 4px rgba(0,0,0,0.32); }
+.lot-cabinet::after { content: ''; position: absolute; left: 5px; right: 5px; top: 9px; height: 2px; background: rgba(0,0,0,0.3); }
+.lot-rug { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 132px; height: 54px; pointer-events: none; border-radius: 5px; background: repeating-linear-gradient(46deg, #9c4b45 0 12px, #8a403b 12px 24px); box-shadow: inset 0 0 0 4px rgba(210,180,120,0.35); opacity: 0.9; }
+
+.lot-fence { position: absolute; pointer-events: none; height: 8px; transform: translate(-50%, -50%); background: linear-gradient(#a8834f, #8a6a3e); border-radius: 2px; box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+.fence-v { transform: translate(-50%, -50%) rotate(90deg); }
+
+/* Desks, seen from above: a slab with a screen on it. */
+.lot-desk, .lot-seat { position: absolute; width: 0; height: 0; }
+.lot-desk { pointer-events: none; }
+.lot-desk-top { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 72px; height: 40px; background: linear-gradient(#a5723f, #8a5c31); border-radius: 4px; box-shadow: 0 3px 5px rgba(0,0,0,0.35); }
+.lot-desk-screen { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%) translateY(-7px); width: 26px; height: 15px; background: #16233a; border: 1.5px solid #34456b; border-radius: 2px; }
+.lot-seat.running .lot-desk-screen { background: #1a4a7a; border-color: #56a4ff; box-shadow: 0 0 10px rgba(90,170,255,0.9); animation: screen-flicker 0.7s steps(3) infinite; }
+@media (prefers-reduced-motion: reduce) { .lot-seat.running .lot-desk-screen { animation: none; } }
+
+.lot-seat { background: none; border: none; padding: 0; cursor: pointer; color: var(--text); }
+.lot-seat-person { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%) translateY(11px); }
+.lot-seat.sel .lot-seat-person { filter: drop-shadow(0 0 7px var(--accent)); }
+.lot-seat .scene-label { transform: translate(-50%, 26px); }
+.lot-seat .scene-sub { transform: translate(-50%, 40px); }
+
+/* The empty desk that adds a citizen. */
+.lot-add { position: absolute; width: 0; height: 0; background: none; border: none; padding: 0; cursor: pointer; color: var(--text); }
+.lot-add-art { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 72px; height: 40px; border: 2px dashed rgba(255,255,255,0.5); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+.lot-add-plus { font-size: 22px; font-weight: 800; color: rgba(255,255,255,0.8); }
+.lot-add:hover .lot-add-art { border-color: var(--accent); }
+.lot-add:hover .lot-add-plus { color: var(--accent); }
+.lot-add .scene-add-label { transform: translate(-50%, 26px); }
+
+/* Citizens walking the grounds, on the same motion-path technique as the town's
+   pedestrians — but each is a real button, so hover/focus pauses the walk to keep
+   a moving target clickable. */
+.lot-walker {
+  position: absolute; top: 0; left: 0; width: 0; height: 0;
+  background: none; border: none; padding: 0; cursor: pointer; color: var(--text);
+  offset-rotate: 0deg; offset-anchor: 50% 50%; z-index: 400;
+  animation: road-travel var(--dur, 46s) linear var(--delay, 0s) infinite;
+}
+.lot-walker:hover, .lot-walker:focus-visible { animation-play-state: paused; }
+.lot-walker .iso-person { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); animation: ped-walk 0.7s ease-in-out infinite; transform-origin: 50% 100%; }
+.lot-walker:hover .iso-person, .lot-walker.sel .iso-person { filter: drop-shadow(0 0 7px var(--accent)); }
+.lot-walker-label { position: absolute; left: 50%; top: 24px; transform: translateX(-50%); white-space: nowrap; font-size: 11px; font-weight: 700; opacity: 0.75; text-shadow: 0 1px 2px rgba(0,0,0,0.85); }
+.lot-walker:hover .lot-walker-label, .lot-walker.sel .lot-walker-label { opacity: 1; color: var(--accent); }
+
+/* The roof, shown for a beat on arrival and then lifted away. */
+.lot-roof {
+  position: absolute; pointer-events: none; border-radius: 8px;
+  background: linear-gradient(158deg, #9cc0de 0%, #7ba7cb 47%, #5b84ab 49%, #43678c 100%);
+  box-shadow: 0 10px 26px rgba(0,0,0,0.45);
+  animation: roof-lift 1.05s cubic-bezier(0.33, 0, 0.2, 1) 0.45s both;
+}
+.lot-roof::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(96deg, rgba(0,0,0,0.12) 0 4px, transparent 4px 13px); border-radius: inherit; }
+@keyframes roof-lift {
+  0% { transform: scale(1); opacity: 1; }
+  55% { opacity: 1; }
+  100% { transform: scale(1.07); opacity: 0; }
+}
+/* No motion: skip the reveal rather than flashing a roof that never lifts. */
+@media (prefers-reduced-motion: reduce) {
+  .lot-roof { display: none; }
+  .lot-walker, .lot-walker .iso-person { animation: none; }
+}
+
 /* "Thinking" bubble over an agent with an active run. */
 .think-bubble { position: absolute; left: 0; top: 0; transform: translate(-50%, -70px); display: flex; gap: 3px; align-items: center; padding: 4px 6px; background: #fff; border-radius: 9px; box-shadow: 0 2px 5px rgba(0,0,0,0.35); z-index: 1000; }
 .think-bubble::after { content: ''; position: absolute; bottom: -4px; left: 50%; transform: translateX(-50%); border: 5px solid transparent; border-top-color: #fff; }
