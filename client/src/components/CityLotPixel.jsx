@@ -26,14 +26,20 @@ const DRAG_SLOP = 5;
 // Tile rects harvested out of room1's furnished interior (see PIXEL-TOWN.md for
 // how these were located). All are [tileX, tileY, tilesW, tilesH].
 const FLOOR_DEF = [81, 20, 1, 1];       // wooden planks
-const WALL_DEF = [80, 15, 1, 1];        // interior wall run
-const DESK_DEF = [82, 16, 1, 1];        // dresser/desk with something on top
+// A plain wall segment. [80,15] also reads as a wall but carries a lamp in the
+// tile, which repeats into a ring of lamps once it tiles the whole perimeter.
+const WALL_DEF = [81, 19, 1, 1];
+const DESK_DEF = [84, 15, 2, 2];        // a real table with legs — the desk
+const CHAIR_DEF = [76, 19, 1, 1];       // blue chair, paired with each desk
 const SHELF_DEF = [83, 16, 1, 1];       // bookshelf
-const RUG_DEF = [82, 17, 3, 2];         // the big light table, used as a rug
+const RUG_DEF = [82, 17, 3, 3];         // big table + patterned red rug
 const ROOF_DEF = [31, 27, 1, 1];        // red roof fill (tile 2194 — real art!)
 const ROOF_TOP_DEF = [31, 26, 1, 1];    // its top-edge course
 const PATH_DEF = [41, 31, 4, 2];        // dirt path
-const ROOM_LAYERS = ['land', 'paths', 'shadows', 'walls', 'building', 'decoration_01'];
+// ORDER MATTERS: `walls` must paint AFTER `building`, or the building layer's
+// floor planks cover the wall art and every wall harvests as plain floor — which
+// is exactly why the interior first read as a bare wooden slab.
+const ROOM_LAYERS = ['land', 'paths', 'shadows', 'decoration_01', 'building', 'walls', 'decoration_02'];
 
 const manifest = {
   tileset: `${BASE}/tileset/spr_tileset_sunnysideworld_16px.png`,
@@ -225,8 +231,9 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
         drawPiece(piece.wall, b.x, b.y + ty * TS, TS, TS);
         drawPiece(piece.wall, b.x + (b.tw - 1) * TS, b.y + ty * TS, TS, TS);
       }
-      // furnishing
-      drawPiece(piece.rug, b.inX + TS, b.y + b.h - TS * 3, TS * 3, TS * 2);
+      // furnishing: the big table + rug sits on the open floor by the door, and
+      // bookshelves line the free row just inside the top wall.
+      drawPiece(piece.rug, b.x + b.w / 2 - TS * 1.5, b.y + b.h - TS * 4, TS * 3, TS * 3);
       for (const s of layout.shelves) drawPiece(piece.shelf, s.x, s.y, TS, TS);
     }
     function drawRoof(alpha, lift) {
@@ -253,8 +260,10 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
       const running = (p) => (counts[p.id]?.running || 0) > 0;
       layout.desks.forEach((d, i) => {
         const p = list[i]; if (!p) return;
-        drawPiece(piece.desk, d.x, d.y, TS, TS);
-        if (running(p)) citizen('ham', t + i * 0.37, d.x + TS * 1.15, d.y + TS * 1.5, true, 14, p.name, counts[p.id]);
+        // desk is 2x2 tiles, with its chair tucked in below-left
+        drawPiece(piece.desk, d.x, d.y, TS * 2, TS * 2);
+        drawPiece(piece.chair, d.x + TS * 0.5, d.y + TS * 2, TS, TS);
+        if (running(p)) citizen('ham', t + i * 0.37, d.x + TS, d.y + TS * 2.9, true, 14, p.name, counts[p.id]);
         if (p.id === sel) {
           X.save(); X.strokeStyle = '#43c6ff'; X.lineWidth = 3;
           X.strokeRect(d.x - 4, d.y - 4, TS + 8, TS + 8); X.restore();
@@ -361,6 +370,7 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
         piece.floor = harvest(room, FLOOR_DEF);
         piece.wall = harvest(room, WALL_DEF);
         piece.desk = harvest(room, DESK_DEF);
+        piece.chair = harvest(room, CHAIR_DEF);
         piece.shelf = harvest(room, SHELF_DEF);
         piece.rug = harvest(room, RUG_DEF);
         piece.roof = harvest(room, ROOF_DEF);
