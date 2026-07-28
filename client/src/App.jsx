@@ -103,7 +103,11 @@ export default function App() {
 
   const city = useMemo(() => tree.cities.find((c) => c.id === cityId) || null, [tree, cityId]);
   const buildings = city?.buildings || [];
-  const people = city?.people || [];
+  const building = buildings.find((b) => b.id === buildingId);
+  const buildingName = building?.name;
+  // Citizens are staffed PER BUILDING (a workspace's team), so the roster only
+  // exists once a building is selected — which matches the drill-down below.
+  const people = building?.people || [];
   const person = useMemo(
     () => people.find((p) => p.id === personId) || tree.allPeople.find((p) => p.id === personId) || null,
     [people, personId, tree],
@@ -111,8 +115,6 @@ export default function App() {
 
   // The conversation shown for the selected person (persists across navigation).
   const current = conv.get(personId);
-  const building = buildings.find((b) => b.id === buildingId);
-  const buildingName = building?.name;
 
   // Live agent-todos for the shown run (active while running, last run after it
   // ends). Seed from the API on change; live todo:update events keep it fresh.
@@ -141,15 +143,19 @@ export default function App() {
   const onAddPerson = useCallback(() => setCreatingPerson(true), []);
 
   // After a citizen is created: reload the catalogue, and (if asked) roster the
-  // new citizen into the current city so they appear in the list immediately.
-  const onPersonCreated = useCallback((newId, addToCity) => {
-    if (addToCity && cityId && city) {
-      const ids = (city.people || []).map((p) => p.id);
-      api.saveCity(cityId, { people: [...ids, newId] }).then(reloadTree).catch(reloadTree);
+  // new citizen into the CURRENT BUILDING so they appear in the list immediately.
+  // Uses the focused roster endpoint — `building` here comes from the resolved
+  // tree, so sending it back through saveCity would persist a machine-absolute
+  // absolutePath and drop the sibling buildings.
+  const onPersonCreated = useCallback((newId, addToBuilding) => {
+    if (addToBuilding && cityId && building) {
+      const ids = (building.people || []).map((p) => p.id);
+      api.saveBuildingRoster(cityId, building.id, [...ids, newId])
+        .then(reloadTree).catch(reloadTree);
     } else {
       reloadTree();
     }
-  }, [cityId, city, reloadTree]);
+  }, [cityId, building, reloadTree]);
 
   const sendPrompt = useCallback(async (text, targetPersonId) => {
     const pid = targetPersonId || personId;
@@ -401,7 +407,7 @@ export default function App() {
       {creatingPerson && (
         <PersonEditor
           createMode
-          cityName={city?.name || null}
+          rosterName={buildingName || null}
           onClose={() => setCreatingPerson(false)}
           onCreated={onPersonCreated}
         />

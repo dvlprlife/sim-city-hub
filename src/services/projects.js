@@ -180,9 +180,9 @@ export function createPerson({ id, manifest, prompt = '' } = {}) {
   return getPersonDoc(id);
 }
 
-// Delete a Person from the library AND scrub its id from every city's roster, so
-// no dangling roster id (a 'missing' tile) is left behind. Throws Unknown person
-// if the folder is absent. Returns { deleted, removedFrom: [cityId, ...] }.
+// Delete a Person from the library AND scrub its id from every BUILDING's roster,
+// so no dangling roster id (a 'missing' tile) is left behind. Throws Unknown
+// person if the folder is absent. Returns { deleted, removedFrom: ['cityId/buildingId', ...] }.
 export function deletePerson(personId) {
   if (!isValidPersonId(personId)) throw new Error(`Invalid person id: ${personId}`);
   const dir = path.join(PEOPLE_DIR, personId);
@@ -193,9 +193,11 @@ export function deletePerson(personId) {
   const cities = catalogue.cities ?? [];
   const removedFrom = [];
   for (const city of cities) {
-    if (Array.isArray(city.people) && city.people.includes(personId)) {
-      city.people = city.people.filter((pid) => pid !== personId);
-      removedFrom.push(city.id);
+    for (const b of city.buildings ?? []) {
+      if (Array.isArray(b.people) && b.people.includes(personId)) {
+        b.people = b.people.filter((pid) => pid !== personId);
+        removedFrom.push(`${city.id}/${b.id}`);
+      }
     }
   }
   if (removedFrom.length) {
@@ -231,13 +233,17 @@ export function getAllPeople() {
   return listPeopleIds().map((id) => getPerson(id)).filter(Boolean);
 }
 
-// Full tree for GET /api/cities — people ids inlined as resolved manifests,
-// preserving roster order (which binds citizens to interior tiles).
+// Full tree for GET /api/cities — each BUILDING's people ids inlined as resolved
+// manifests, preserving roster order (which binds citizens to interior tiles).
 export function getCityTree() {
+  const inline = (ids) => (ids ?? []).map((pid) => getPerson(pid) ?? { id: pid, name: pid, missing: true });
   const cities = getCities().map((city) => ({
     ...city,
-    buildings: (city.buildings ?? []).map((b) => ({ ...b, absolutePath: resolvePath(b.absolutePath) })),
-    people: (city.people ?? []).map((pid) => getPerson(pid) ?? { id: pid, name: pid, missing: true }),
+    buildings: (city.buildings ?? []).map((b) => ({
+      ...b,
+      absolutePath: resolvePath(b.absolutePath),
+      people: inline(b.people),
+    })),
   }));
   return { config: getConfig(), cities, allPeople: getAllPeople() };
 }
@@ -292,6 +298,12 @@ function writeCatalogue(catalogue) {
   invalidateFileCache(CITIES_FILE);
 }
 
+// Same write path, exposed for the one-time schema migrations (migrate.js) so a
+// migration can't invent its own formatting or skip the cache invalidation.
+export function writeCatalogueFile(catalogue) {
+  writeCatalogue(catalogue);
+}
+
 // Raw, unresolved cities array for the config editor (paths as stored).
 export function getRawCities() {
   return readCatalogueRaw().cities ?? [];
@@ -299,8 +311,9 @@ export function getRawCities() {
 
 // Roster: every id must be a slug that resolves to a people/<id>/ folder (a bad
 // id would break tile binding). Order is preserved; duplicates are rejected.
+// Rosters hang off BUILDINGS, not cities — see mergeBuildings.
 function validateRoster(people) {
-  if (!Array.isArray(people)) throw new Error('city.people must be an array');
+  if (!Array.isArray(people)) throw new Error('building.people must be an array');
   const seen = new Set();
   return people.map((pid) => {
     if (!isValidSlug(pid)) throw new Error(`Invalid person id in roster: ${pid}`);
@@ -331,6 +344,9 @@ function mergeBuildings(existing, sent) {
     if (b.guidelines !== undefined && !isValidSlug(b.guidelines)) {
       throw new Error(`building.guidelines must be a slug (${b.id})`);
     }
+    // The building's roster binds citizens to interior tiles by index, so it is
+    // validated on the same terms a city roster used to be.
+    if (b.people !== undefined) b.people = validateRoster(b.people);
     if (seen.has(b.id)) throw new Error(`Duplicate building id: ${b.id}`);
     seen.add(b.id);
     return { ...(byId.get(b.id) ?? {}), ...b };
@@ -338,8 +354,10 @@ function mergeBuildings(existing, sent) {
 }
 
 // Merge an edit into one city of the freshly-read catalogue and persist it.
-// Accepts { name?, description?, people?, buildings? }; only provided fields are
-// touched. Atomic write + cache invalidation so the next read/spawn sees it.
+// Accepts { name?, description?, buildings? }; only provided fields are touched.
+// Rosters are per-BUILDING, so a roster edit arrives inside `buildings`, not as a
+// city-level `people`. Atomic write + cache invalidation so the next read/spawn
+// sees it.
 export function writeCity(cityId, patch = {}) {
   if (!isValidSlug(cityId)) throw new Error(`Invalid city id: ${cityId}`);
   const catalogue = readCatalogueRaw();
@@ -356,7 +374,9 @@ export function writeCity(cityId, patch = {}) {
     if (typeof patch.description !== 'string') throw new Error('city.description must be a string');
     city.description = patch.description;
   }
-  if (patch.people !== undefined) city.people = validateRoster(patch.people);
+  if (patch.people !== undefined) {
+    throw new Error('Rosters are per-building: send people inside buildings[], not on the city');
+  }
   if (patch.buildings !== undefined) city.buildings = mergeBuildings(cities[idx].buildings, patch.buildings);
 
   cities[idx] = city;
@@ -365,8 +385,31 @@ export function writeCity(cityId, patch = {}) {
   return city;
 }
 
+// Replace ONE building's roster, leaving every other field and every sibling
+// building untouched. A focused path for the common "staff this workspace" edit:
+// callers holding the resolved tree (where absolutePath is machine-absolute) must
+// not round-trip building objects through writeCity, or they would persist a
+// machine path — and mergeBuildings replaces the array wholesale, so a partial
+// buildings[] would drop the siblings. Returns the updated building.
+export function setBuildingRoster(cityId, buildingId, people) {
+  if (!isValidSlug(cityId)) throw new Error(`Invalid city id: ${cityId}`);
+  if (!isValidSlug(buildingId)) throw new Error(`Invalid building id: ${buildingId}`);
+  const catalogue = readCatalogueRaw();
+  const cities = catalogue.cities ?? [];
+  const city = cities.find((c) => c.id === cityId);
+  if (!city) throw new Error(`Unknown city: ${cityId}`);
+  const building = (city.buildings ?? []).find((b) => b.id === buildingId);
+  if (!building) throw new Error(`Unknown building: ${buildingId}`);
+
+  building.people = validateRoster(people);
+  catalogue.cities = cities;
+  writeCatalogue(catalogue);
+  return building;
+}
+
 // Create a new city. `id` must be a fresh slug; `name` is required. The city
-// starts empty (no buildings/roster) — fill it via the editor afterwards.
+// starts empty (no buildings) — fill it via the editor afterwards. Rosters live
+// on the buildings you add to it.
 export function createCity({ id, name, description = '' } = {}) {
   if (!isValidSlug(id)) throw new Error(`Invalid city id: ${id}`);
   if (typeof name !== 'string' || !name.trim()) throw new Error('city.name is required');
@@ -374,7 +417,7 @@ export function createCity({ id, name, description = '' } = {}) {
   const catalogue = readCatalogueRaw();
   const cities = catalogue.cities ?? [];
   if (cities.some((c) => c.id === id)) throw new Error(`City already exists: ${id}`);
-  const city = { id, name: name.trim(), description, people: [], buildings: [] };
+  const city = { id, name: name.trim(), description, buildings: [] };
   cities.push(city);
   catalogue.cities = cities;
   writeCatalogue(catalogue);

@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { CITIES_FILE } from '../src/paths.js';
 import { ensureSeeded } from '../src/services/seed.js';
-import { writeCity, getRawCities, createCity, deleteCity, stringifyCompact } from '../src/services/projects.js';
+import {
+  writeCity, getRawCities, createCity, deleteCity, stringifyCompact, setBuildingRoster,
+} from '../src/services/projects.js';
 
 ensureSeeded(); // fresh checkout ships only seed/; populate the working cities.json first
 const ORIGINAL = readFileSync(CITIES_FILE, 'utf8');
@@ -20,6 +22,7 @@ function withRestore(fn) {
 }
 
 const downtownBuildings = () => getRawCities().find((c) => c.id === 'downtown').buildings;
+const firstBuilding = () => downtownBuildings().find((b) => b.id === 'city-hall');
 
 test('stringifyCompact round-trips and keeps primitive arrays inline', () => {
   const sample = {
@@ -49,25 +52,58 @@ test('re-serializing the catalogue matches the hand-format (no diff churn)', () 
   assert.equal(lf(round), lf(ORIGINAL));
 });
 
-test('writeCity preserves roster order exactly as given', () => {
+// Rosters hang off BUILDINGS, not cities (CLAUDE.md). setBuildingRoster is the
+// focused path; writeCity reaches them through buildings[].
+test('setBuildingRoster preserves roster order exactly as given', () => {
   withRestore(() => {
-    const reversed = [...getRawCities().find((c) => c.id === 'downtown').people].reverse();
-    const city = writeCity('downtown', { people: reversed });
-    assert.deepEqual(city.people, reversed);
+    const reversed = [...firstBuilding().people].reverse();
+    const building = setBuildingRoster('downtown', 'city-hall', reversed);
+    assert.deepEqual(building.people, reversed);
     // persisted (fresh read), not just returned
-    assert.deepEqual(getRawCities().find((c) => c.id === 'downtown').people, reversed);
+    assert.deepEqual(firstBuilding().people, reversed);
   });
 });
 
-test('writeCity rejects an unknown roster id (tile binding stays valid)', () => {
+test('setBuildingRoster leaves sibling buildings untouched', () => {
   withRestore(() => {
-    assert.throws(() => writeCity('downtown', { people: ['mayors-aide', 'nobody-here'] }), /Unknown person in roster/);
+    const before = downtownBuildings().find((b) => b.id === 'acme');
+    setBuildingRoster('downtown', 'city-hall', ['clerk']);
+    assert.deepEqual(downtownBuildings().find((b) => b.id === 'acme'), before);
   });
 });
 
-test('writeCity rejects a duplicate roster id', () => {
+test('setBuildingRoster rejects an unknown roster id (tile binding stays valid)', () => {
   withRestore(() => {
-    assert.throws(() => writeCity('downtown', { people: ['clerk', 'clerk'] }), /Duplicate person in roster/);
+    assert.throws(() => setBuildingRoster('downtown', 'city-hall', ['mayors-aide', 'nobody-here']), /Unknown person in roster/);
+  });
+});
+
+test('setBuildingRoster rejects a duplicate roster id', () => {
+  withRestore(() => {
+    assert.throws(() => setBuildingRoster('downtown', 'city-hall', ['clerk', 'clerk']), /Duplicate person in roster/);
+  });
+});
+
+test('setBuildingRoster 404-shapes unknown city/building and rejects bad slugs', () => {
+  withRestore(() => {
+    assert.throws(() => setBuildingRoster('atlantis', 'city-hall', []), /Unknown city/);
+    assert.throws(() => setBuildingRoster('downtown', 'nowhere', []), /Unknown building/);
+    assert.throws(() => setBuildingRoster('../etc', 'city-hall', []), /Invalid city id/);
+    assert.throws(() => setBuildingRoster('downtown', '../evil', []), /Invalid building id/);
+  });
+});
+
+test('writeCity rejects a city-level roster (rosters are per-building)', () => {
+  withRestore(() => {
+    assert.throws(() => writeCity('downtown', { people: ['clerk'] }), /per-building/);
+  });
+});
+
+test('writeCity validates a roster sent inside buildings[]', () => {
+  withRestore(() => {
+    const sent = downtownBuildings().map((b) => ({ id: b.id, name: b.name, people: b.people }));
+    sent[0].people = ['nobody-here'];
+    assert.throws(() => writeCity('downtown', { buildings: sent }), /Unknown person in roster/);
   });
 });
 
@@ -119,7 +155,7 @@ test('writeCity rejects an invalid (non-slug) city id', () => {
 test('createCity adds an empty city; rejects dup / invalid id / empty name', () => {
   withRestore(() => {
     const city = createCity({ id: 'newtown', name: 'New Town', description: 'fresh' });
-    assert.deepEqual(city, { id: 'newtown', name: 'New Town', description: 'fresh', people: [], buildings: [] });
+    assert.deepEqual(city, { id: 'newtown', name: 'New Town', description: 'fresh', buildings: [] });
     assert.ok(getRawCities().some((c) => c.id === 'newtown'));
     assert.throws(() => createCity({ id: 'downtown', name: 'Dup' }), /already exists/);
     assert.throws(() => createCity({ id: '../evil', name: 'X' }), /Invalid city id/);

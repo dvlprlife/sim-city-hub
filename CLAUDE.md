@@ -61,8 +61,14 @@ CI:
   built-in renders only in the CLI console, not the hub UI.
 - **Never auto-commit.** Agents must not run `git commit` unless the user
   explicitly asks; the system-prompt footer must say so.
-- **Rosters are per-City and order matters.** Each city's `people: [...]` array
-  binds citizens to interior tiles by index. `people/<id>/` is a shared library.
+- **Rosters are per-Building and order matters.** Each building's `people: [...]`
+  array binds citizens to interior tiles by index — agents are staffed per
+  workspace, not per domain, so a city has NO `people` key. `people/<id>/` remains
+  a shared library, and the same citizen may be rostered in many buildings.
+  `writeCity` rejects a city-level `people` rather than ignoring it; roster edits
+  ride inside `buildings[]`, or via `PATCH /api/cities/:id/buildings/:buildingId`
+  for a single building. An older `data/cities.json` is migrated on boot
+  (`services/migrate.js`): every building inherits a copy of its city's roster.
 - **The handoff token is literal:** `[HANDOFF:other-person-id] <self-contained
   prompt>` on its own line. The receiving Person gets ZERO conversation history
   — the handoff prompt must carry all context.

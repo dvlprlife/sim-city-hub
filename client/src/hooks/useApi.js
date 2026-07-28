@@ -31,6 +31,11 @@ export const api = {
   getCities: () => fetch('/api/cities').then(json),
   citiesConfig: () => fetch('/api/cities/config').then(json),
   saveCity: (id, body) => patch(`/api/cities/${encodeURIComponent(id)}`, body),
+  // Roster of ONE building — never send resolved building objects back via saveCity.
+  saveBuildingRoster: (cityId, buildingId, people) => patch(
+    `/api/cities/${encodeURIComponent(cityId)}/buildings/${encodeURIComponent(buildingId)}`,
+    { people },
+  ),
   createCity: (body) => post('/api/cities', body),
   deleteCity: (id) => del(`/api/cities/${encodeURIComponent(id)}`),
   getPerson: (id) => fetch(`/api/people/${encodeURIComponent(id)}`).then(json),

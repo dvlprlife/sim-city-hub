@@ -1,8 +1,10 @@
 import PathPicker from './PathPicker.jsx';
 
 // Right panel: choose the building (workspace) the next message runs in, and
-// pick which citizen to talk to in the current city. A dot marks citizens with
-// an in-flight run, so concurrent agents are visible at a glance.
+// pick which citizen to talk to. Citizens are staffed PER BUILDING, so the list
+// below is the selected building's roster and changes as you switch workspace. A
+// dot marks citizens with an in-flight run, so concurrent agents are visible at a
+// glance.
 export default function PersonPicker({
   city, buildings, selectedBuildingId, onSelectBuilding,
   people, selectedPersonId, onSelectPerson, runningPersonIds = [], onEditPerson, onNewPerson,
@@ -26,7 +28,8 @@ export default function PersonPicker({
       </select>
       <PathPicker path={building?.absolutePath} />
 
-      <div className="picker-head">{city.name} citizens</div>
+      <div className="picker-head">{building ? `${building.name} citizens` : 'Citizens'}</div>
+      {!building && <div className="picker-path">Pick a building to see its citizens.</div>}
       <ul className="picker-people">
         {(people || []).map((p) => (
           <li key={p.id}>

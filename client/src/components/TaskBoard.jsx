@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../hooks/useApi.js';
+import { peopleFor } from '../lib/roster.js';
 
 // THEMED VIEW — "City Hall": a work-order board over the backend tasks API
 // (GET/POST/PATCH/DELETE /api/tasks). Queue work for a city's citizens, move it
@@ -29,7 +30,9 @@ export default function TaskBoard({ cities = [], allPeople = [], defaultCityId =
 
   const city = useMemo(() => cities.find((c) => c.id === filterCity) || null, [cities, filterCity]);
   const buildings = city?.buildings || [];
-  const people = city?.people || [];
+  // Assignees follow the chosen workspace (rosters are per-building); before one
+  // is picked, offer everyone staffed anywhere in the city.
+  const people = useMemo(() => peopleFor(city, buildingId), [city, buildingId]);
 
   const load = useCallback(() => {
     if (!filterCity) { setTasks([]); return; }

@@ -32,7 +32,8 @@ export default function ConfigPanel({ allPeople = [], onSaved }) {
   const loadConfig = useCallback(
     () => api.citiesConfig()
       .then((data) => setCities((data.cities || []).map((c) => ({
-        ...c, people: [...(c.people || [])], buildings: (c.buildings || []).map((b) => ({ ...b })),
+        ...c,
+        buildings: (c.buildings || []).map((b) => ({ ...b, people: [...(b.people || [])] })),
       }))))
       .catch((e) => setLoadError(e.message)),
     [],
@@ -66,20 +67,25 @@ export default function ConfigPanel({ allPeople = [], onSaved }) {
   const removeBuilding = (cityId, i) =>
     patchCity(cityId, (c) => ({ ...c, buildings: c.buildings.filter((_, j) => j !== i) }));
 
-  // --- roster ---
-  const moveMember = (cityId, i, dir) =>
-    patchCity(cityId, (c) => {
+  // --- roster (per BUILDING: `bi` is the building's index in the city) ---
+  const patchRoster = (cityId, bi, fn) =>
+    patchCity(cityId, (c) => ({
+      ...c,
+      buildings: c.buildings.map((b, j) => (j === bi ? { ...b, people: fn(b.people || []) } : b)),
+    }));
+  const moveMember = (cityId, bi, i, dir) =>
+    patchRoster(cityId, bi, (people) => {
       const j = i + dir;
-      if (j < 0 || j >= c.people.length) return c;
-      const people = [...c.people];
-      [people[i], people[j]] = [people[j], people[i]];
-      return { ...c, people };
+      if (j < 0 || j >= people.length) return people;
+      const next = [...people];
+      [next[i], next[j]] = [next[j], next[i]];
+      return next;
     });
-  const removeMember = (cityId, i) =>
-    patchCity(cityId, (c) => ({ ...c, people: c.people.filter((_, j) => j !== i) }));
-  const addMember = (cityId, pid) => {
+  const removeMember = (cityId, bi, i) =>
+    patchRoster(cityId, bi, (people) => people.filter((_, j) => j !== i));
+  const addMember = (cityId, bi, pid) => {
     if (!pid) return;
-    patchCity(cityId, (c) => (c.people.includes(pid) ? c : { ...c, people: [...c.people, pid] }));
+    patchRoster(cityId, bi, (people) => (people.includes(pid) ? people : [...people, pid]));
   };
 
   const save = async (city) => {
@@ -89,11 +95,11 @@ export default function ConfigPanel({ allPeople = [], onSaved }) {
       // Strip editor-only flags (_new, _key) so they never reach cities.json.
       const buildings = city.buildings.map(({ _new, _key, ...b }) => b);
       const saved = await api.saveCity(city.id, {
-        name: city.name, description: city.description ?? '', people: city.people, buildings,
+        name: city.name, description: city.description ?? '', buildings,
       });
       // Adopt the server's canonical city (drops _new/_key; reflects the merge).
       setCities((cs) => cs.map((c) => (c.id === city.id
-        ? { ...c, ...saved, people: [...(saved.people || [])], buildings: (saved.buildings || []).map((b) => ({ ...b })) }
+        ? { ...c, ...saved, buildings: (saved.buildings || []).map((b) => ({ ...b, people: [...(b.people || [])] })) }
         : c)));
       setConfirmingId(null);
       setSavedId(city.id);
@@ -163,7 +169,6 @@ export default function ConfigPanel({ allPeople = [], onSaved }) {
       </section>
 
       {cities.map((city) => {
-        const available = allPeople.filter((p) => !city.people.includes(p.id));
         const saving = savingId === city.id;
         return (
           <section className="config-city" key={city.id}>
@@ -192,26 +197,26 @@ export default function ConfigPanel({ allPeople = [], onSaved }) {
             </label>
 
             <div className="config-sub">Buildings</div>
-            {city.buildings.map((b, i) => (
+            {city.buildings.map((b, i2) => (
               <div className="config-building" key={b._key || b.id}>
                 <div className="config-building-row">
                   {b._new ? (
                     <input className="bid" placeholder="id (slug)" value={b.id}
-                      onChange={(e) => setBuilding(city.id, i, { id: e.target.value })} />
+                      onChange={(e) => setBuilding(city.id, i2, { id: e.target.value })} />
                   ) : (
                     <span className="bid mono">{b.id}</span>
                   )}
                   <input className="bname" placeholder="name" value={b.name || ''}
-                    onChange={(e) => setBuilding(city.id, i, { name: e.target.value })} />
-                  <button className="config-remove" title="Remove building" onClick={() => removeBuilding(city.id, i)}>✕</button>
+                    onChange={(e) => setBuilding(city.id, i2, { name: e.target.value })} />
+                  <button className="config-remove" title="Remove building" onClick={() => removeBuilding(city.id, i2)}>✕</button>
                 </div>
-                <PathPicker path={b.absolutePath} editable onChange={(v) => setBuilding(city.id, i, { absolutePath: v })} />
+                <PathPicker path={b.absolutePath} editable onChange={(v) => setBuilding(city.id, i2, { absolutePath: v })} />
                 <div className="config-graphic">
                   <img className="config-graphic-swatch" src={spriteFor(b.sprite).asset} alt="" aria-hidden="true" />
                   <select
                     className="config-graphic-select"
                     value={b.sprite || DEFAULT_BUILDING_SPRITE}
-                    onChange={(e) => setBuilding(city.id, i, { sprite: e.target.value })}
+                    onChange={(e) => setBuilding(city.id, i2, { sprite: e.target.value })}
                     title="Building graphic shown on the City Map"
                   >
                     {buildingSprites.map((s) => (
@@ -219,31 +224,32 @@ export default function ConfigPanel({ allPeople = [], onSaved }) {
                     ))}
                   </select>
                 </div>
+
+                <div className="config-sub">Roster <small>(order = interior tile order)</small></div>
+                <ol className="config-roster">
+                  {(b.people || []).map((pid, i) => (
+                    <li key={pid}>
+                      <span className={nameById[pid] ? '' : 'missing'}>{nameById[pid] || pid}</span>
+                      <span className="config-roster-actions">
+                        <button title="Move up" disabled={i === 0} onClick={() => moveMember(city.id, i2, i, -1)}>▲</button>
+                        <button title="Move down" disabled={i === (b.people || []).length - 1} onClick={() => moveMember(city.id, i2, i, 1)}>▼</button>
+                        <button title="Remove" onClick={() => removeMember(city.id, i2, i)}>✕</button>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+                {allPeople.filter((p) => !(b.people || []).includes(p.id)).length > 0 && (
+                  <div className="config-add-member">
+                    <select aria-label={`Add citizen to ${b.name || b.id}`} value="" onChange={(e) => addMember(city.id, i2, e.target.value)}>
+                      <option value="">+ Add citizen…</option>
+                      {allPeople.filter((p) => !(b.people || []).includes(p.id))
+                        .map((p) => <option key={p.id} value={p.id}>{p.name} ({p.id})</option>)}
+                    </select>
+                  </div>
+                )}
               </div>
             ))}
             <button className="config-add" onClick={() => addBuilding(city.id)}>+ Add building</button>
-
-            <div className="config-sub">Roster <small>(order = interior tile order)</small></div>
-            <ol className="config-roster">
-              {city.people.map((pid, i) => (
-                <li key={pid}>
-                  <span className={nameById[pid] ? '' : 'missing'}>{nameById[pid] || pid}</span>
-                  <span className="config-roster-actions">
-                    <button title="Move up" disabled={i === 0} onClick={() => moveMember(city.id, i, -1)}>▲</button>
-                    <button title="Move down" disabled={i === city.people.length - 1} onClick={() => moveMember(city.id, i, 1)}>▼</button>
-                    <button title="Remove" onClick={() => removeMember(city.id, i)}>✕</button>
-                  </span>
-                </li>
-              ))}
-            </ol>
-            {available.length > 0 && (
-              <div className="config-add-member">
-                <select aria-label="Add citizen to roster" value="" onChange={(e) => addMember(city.id, e.target.value)}>
-                  <option value="">+ Add citizen…</option>
-                  {available.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.id})</option>)}
-                </select>
-              </div>
-            )}
 
             {errorById[city.id] && <div className="error">{errorById[city.id]}</div>}
 
