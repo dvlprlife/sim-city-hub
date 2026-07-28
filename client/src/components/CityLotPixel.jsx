@@ -86,14 +86,19 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
     let roofT = 0;                        // seconds since mount, drives the reveal
 
     const fitZoom = () => Math.min(C.width / layout.worldW, C.height / layout.worldH);
+    const minZoom = () => fitZoom() * 0.5;
     function clampCam() {
-      cam.z = clamp(cam.z, fitZoom() * 0.6, 3.2);
+      cam.z = clamp(cam.z, minZoom(), 3.2);
       const ww = layout.worldW * cam.z, wh = layout.worldH * cam.z;
       cam.x = ww <= C.width ? (C.width - ww) / 2 : clamp(cam.x, C.width - ww, 0);
       cam.y = wh <= C.height ? (C.height - wh) / 2 : clamp(cam.y, C.height - wh, 0);
     }
+    // Frame at the SAME scale as the pixel Buildings view — that view sizes zoom so
+    // ~620px of vertical world fills the viewport (capped at 1.4), so a citizen and
+    // a tile are the same size in both, and switching views doesn't jump scale.
+    // Fitting the whole lot on screen instead would shrink everything.
     function home() {
-      cam.z = clamp(Math.min(C.width / layout.worldW, C.height / layout.worldH) * 1.02, 0.2, 2.2);
+      cam.z = clamp(C.height / 620, minZoom(), 1.4);
       cam.x = C.width / 2 - (layout.worldW / 2) * cam.z;
       cam.y = C.height / 2 - (layout.worldH / 2) * cam.z;
       clampCam();
