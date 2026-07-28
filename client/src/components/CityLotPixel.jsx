@@ -157,9 +157,14 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
         X.fillStyle = running > 0 ? '#ff6b6b' : '#ffd166'; X.fillText(badge, cx + X.measureText(text).width / 2, topY + 10);
       } else { X.fillStyle = '#eaf3ea'; X.fillText(text, cx, topY + 10); }
     }
-    function citizen(state, t, x, y, flip, fps) {
+    // `y` is the citizen's FEET. The name rides at y - 60*S — the same offset the
+    // pixel town uses — which clears the top of the 64px-tall frame, so the label
+    // sits above the head instead of across the body.
+    function citizen(state, t, x, y, flip, fps, name, counts) {
       const f = anim(STATE[state], fps, t);
-      for (const part of ['base', 'hair', 'tools']) drawFrame(IMG[`${state}_${part}`], CH.w, CH.h, f, x, y, S, flip);
+      const footY = y + 4 * S;
+      for (const part of ['base', 'hair', 'tools']) drawFrame(IMG[`${state}_${part}`], CH.w, CH.h, f, x, footY, S, flip);
+      if (name) label(name, x, y - 60 * S, counts);
     }
 
     // ---- scene ----
@@ -239,10 +244,7 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
       layout.desks.forEach((d, i) => {
         const p = list[i]; if (!p) return;
         drawPiece(piece.desk, d.x, d.y, TS, TS);
-        if (running(p)) {
-          citizen('ham', t + i * 0.37, d.x + TS * 1.15, d.y + TS * 1.5, true, 14);
-          label(p.name, d.x + TS * 0.5, d.y - 26, counts[p.id]);
-        }
+        if (running(p)) citizen('ham', t + i * 0.37, d.x + TS * 1.15, d.y + TS * 1.5, true, 14, p.name, counts[p.id]);
         if (p.id === sel) {
           X.save(); X.strokeStyle = '#43c6ff'; X.lineWidth = 3;
           X.strokeRect(d.x - 4, d.y - 4, TS + 8, TS + 8); X.restore();
@@ -262,8 +264,7 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
       const idle = list.filter((p) => !running(p));
       idle.forEach((p, i) => {
         const pos = routePos(layout.route, (t / 46) + i / Math.max(1, idle.length));
-        citizen('walk', t + i * 0.5, pos.x, pos.y, pos.dx < 0, 9);
-        label(p.name, pos.x, pos.y - CH.h * S * 0.55, counts[p.id]);
+        citizen('walk', t + i * 0.5, pos.x, pos.y, pos.dx < 0, 9, p.name, counts[p.id]);
         if (p.id === sel) {
           X.save(); X.strokeStyle = '#43c6ff'; X.lineWidth = 3;
           X.beginPath(); X.ellipse(pos.x, pos.y - 6, 26, 12, 0, 0, Math.PI * 2); X.stroke(); X.restore();
