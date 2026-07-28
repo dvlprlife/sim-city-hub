@@ -8,7 +8,7 @@ import { PEOPLE_DIR, CITIES_FILE } from '../src/paths.js';
 import { ensureSeeded } from '../src/services/seed.js';
 import {
   validateManifest, MANIFEST_MODELS, MANIFEST_EFFORTS, isValidPersonId, getPersonDoc,
-  createPerson, deletePerson, writeCity, getRawCities,
+  createPerson, deletePerson, setBuildingRoster, getRawCities,
   listPeopleIds, getAllPeople,
 } from '../src/services/projects.js';
 
@@ -115,8 +115,8 @@ test('createPerson writes the folder + files; rejects dup / bad manifest / bad i
 test('getAllPeople / listPeopleIds include a created-but-unrostered citizen', () => {
   try {
     createPerson({ id: TMP_ID, manifest: { name: 'Tmp', job: 'Tester' } });
-    // It is in NO city roster...
-    assert.ok(!getRawCities().some((c) => (c.people || []).includes(TMP_ID)));
+    // It is in NO building roster...
+    assert.ok(!getRawCities().some((c) => (c.buildings || []).some((b) => (b.people || []).includes(TMP_ID))));
     // ...yet it must be reachable in the library (so the Config picker can offer it).
     assert.ok(listPeopleIds().includes(TMP_ID));
     assert.ok(getAllPeople().some((p) => p.id === TMP_ID));
@@ -125,18 +125,19 @@ test('getAllPeople / listPeopleIds include a created-but-unrostered citizen', ()
   }
 });
 
-test('deletePerson removes the folder AND scrubs the id from city rosters', () => {
+test('deletePerson removes the folder AND scrubs the id from building rosters', () => {
+  const roster = () => getRawCities().find((c) => c.id === 'downtown')
+    .buildings.find((b) => b.id === 'city-hall').people;
   try {
     createPerson({ id: TMP_ID, manifest: { name: 'Tmp', job: 'Tester' } });
-    const downtown = getRawCities().find((c) => c.id === 'downtown');
-    writeCity('downtown', { people: [...downtown.people, TMP_ID] });
-    assert.ok(getRawCities().find((c) => c.id === 'downtown').people.includes(TMP_ID));
+    setBuildingRoster('downtown', 'city-hall', [...roster(), TMP_ID]);
+    assert.ok(roster().includes(TMP_ID));
 
     const res = deletePerson(TMP_ID);
     assert.equal(res.deleted, TMP_ID);
-    assert.ok(res.removedFrom.includes('downtown'));
+    assert.ok(res.removedFrom.includes('downtown/city-hall'));
     assert.equal(existsSync(TMP_DIR), false);
-    assert.ok(!getRawCities().find((c) => c.id === 'downtown').people.includes(TMP_ID));
+    assert.ok(!roster().includes(TMP_ID));
 
     assert.throws(() => deletePerson('nope-nobody'), /Unknown person/);
     assert.throws(() => deletePerson('../evil'), /Invalid person id/);

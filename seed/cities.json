@@ -8,7 +8,6 @@
       "description": "Your main, production-grade projects",
       "guidelines": "downtown",
       "issueTracker": "github",
-      "people": ["mayors-aide", "city-planner", "developer", "tester", "inspector", "translator", "clerk", "police-chief"],
       "buildings": [
         {
           "id": "city-hall",
@@ -16,7 +15,8 @@
           "absolutePath": ".",
           "guidelines": "city-hall",
           "sprite": "town-hall",
-          "tile": [10, 10]
+          "tile": [10, 10],
+          "people": ["mayors-aide", "city-planner", "clerk"]
         },
         {
           "id": "acme",
@@ -24,7 +24,8 @@
           "absolutePath": "REPLACE_WITH/path/to/your-project",
           "guidelines": "acme",
           "sprite": "office",
-          "tile": [13, 7]
+          "tile": [13, 7],
+          "people": ["mayors-aide", "developer", "tester", "inspector", "translator", "police-chief"]
         }
       ]
     },
@@ -34,7 +35,6 @@
       "folder": "suburbs",
       "description": "Side projects and personal work",
       "guidelines": "suburbs",
-      "people": ["mayors-aide", "web-dev", "writer", "researcher"],
       "buildings": [
         {
           "id": "blog",
@@ -42,7 +42,8 @@
           "absolutePath": "REPLACE_WITH/path/to/your-blog",
           "guidelines": "blog",
           "sprite": "house",
-          "tile": [4, 9]
+          "tile": [4, 9],
+          "people": ["mayors-aide", "writer", "researcher", "web-dev"]
         }
       ]
     }

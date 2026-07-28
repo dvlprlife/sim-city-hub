@@ -16,13 +16,14 @@ Cities (domains)   →   Buildings (workspaces)   →   People (agents)
 ```
 
 - A **City** is a high-level domain (e.g. *Downtown* = your main projects,
-  *Suburbs* = side projects). Each city has its own guidelines and its own
-  ordered roster of People.
+  *Suburbs* = side projects). Each city has its own guidelines and its buildings.
 - A **Building** is a concrete codebase/workspace on disk — its absolute path
-  becomes the agent's `cwd`.
+  becomes the agent's `cwd` — and it carries its own ordered roster of People, so
+  each workspace is staffed with the team that suits it.
 - A **Person** is a single Claude Code persona (system prompt + default model +
-  optional MCPs) that belongs to a City. You pick which Building they work in
-  per conversation.
+  optional MCPs). The `people/` library is shared, so the same Person can be
+  rostered in as many Buildings as you like; pick the Building first, then the
+  Person who works in it.
 
 The spatial UI is a visual reskin of "pick city → pick building → pick person."
 The orchestration underneath is plain HTTP + WebSockets — the backend is
@@ -129,8 +130,8 @@ in-app — the ✎ on a citizen opens an editor for their model, **avatar**, pro
 and MCPs, and
 **+ New citizen** / **Delete** create and remove them
 (`POST`/`GET`/`PATCH`/`DELETE /api/people[/:id]`); since the `people/` library is
-shared, an edit applies to every city that rosters them (and a delete scrubs them
-from every roster). The **Config** view (top bar) edits
+shared, an edit applies to every building that rosters them (and a delete scrubs
+them from every roster). The **Config** view (top bar) edits
 `cities.json` — add/delete cities, edit buildings (workspace paths with live
 validation, plus a per-building **graphic** shown on the isometric City Map), and
 reorder rosters — via `GET /api/cities/config`,

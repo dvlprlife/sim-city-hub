@@ -1,5 +1,6 @@
 import ActivityBadge from './ActivityBadge.jsx';
 import { spriteFor } from '../map/buildingSprites.js';
+import { cityPeople } from '../lib/roster.js';
 
 // Raindrops for the passing shower — a deterministic spread (no Math.random) so
 // they don't re-shuffle on every render. Each drop falls on its own loop; the
@@ -75,7 +76,7 @@ export default function CityMap({ cities, onEnterCity, cityCounts = {}, onAddCit
                   <span className="ls-shadow" aria-hidden="true" />
                 </span>
                 <span className="ls-name">{c.name}<ActivityBadge counts={cityCounts[c.id]} /></span>
-                <span className="ls-sub">{(c.buildings?.length ?? 0)} 🏢 · {(c.people?.length ?? 0)} 👤</span>
+                <span className="ls-sub">{(c.buildings?.length ?? 0)} 🏢 · {cityPeople(c).length} 👤</span>
               </button>
             );
           })}

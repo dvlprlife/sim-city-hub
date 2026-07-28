@@ -7,6 +7,16 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **Citizens are now staffed per Building instead of per City.** Each building
+  (workspace) carries its own ordered roster, so you can give a codebase exactly
+  the team it needs rather than sharing one list across every project in the
+  city. The right-hand panel lists the selected workspace's citizens and updates
+  as you switch workspace, and Config edits rosters under each building. The
+  `people/` library is still shared — the same citizen can be staffed in as many
+  buildings as you like. **Your existing rosters are migrated automatically on
+  first boot:** every building inherits a copy of its city's roster, so nothing
+  changes until you trim them, and the pre-migration `data/cities.json` is kept
+  beside it as `cities.json.bak`.
 - **On the City Map, the sun now sets at night and hides when it rains.** The
   landscape sun used to stay lit straight through the night and shine through
   passing rain showers; now it sets behind the hills at dusk and rises at dawn,

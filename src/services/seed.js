@@ -10,6 +10,7 @@ import {
   CITIES_FILE, PEOPLE_DIR, GUIDELINES_DIR,
   SEED_CITIES_FILE, SEED_PEOPLE_DIR, SEED_GUIDELINES_DIR,
 } from '../paths.js';
+import { migrateRostersToBuildings } from './migrate.js';
 
 export function ensureSeeded() {
   const seeded = [];
@@ -35,6 +36,13 @@ export function ensureSeeded() {
     cpSync(SEED_GUIDELINES_DIR, GUIDELINES_DIR, { recursive: true });
     seeded.push('guidelines/');
   }
+
+  // Bring an older working catalogue up to the current schema. Runs after the
+  // copy above so a just-seeded file (already current) is a cheap no-op, and from
+  // here rather than server.js so every entry point — hub boot and the test
+  // suite — reads the migrated shape.
+  const migrated = migrateRostersToBuildings();
+  if (migrated?.moved.length) seeded.push(`migrated rosters to ${migrated.moved.length} building(s)`);
 
   return seeded;
 }

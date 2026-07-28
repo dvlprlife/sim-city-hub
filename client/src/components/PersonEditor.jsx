@@ -11,10 +11,13 @@ const BLANK = { name: '', job: '', icon: DEFAULT_AVATAR, description: '', defaul
 // delete) affects every roster that includes the citizen and every future run —
 // hence the warning banner and the confirm-gated actions. `createMode` switches
 // to creating a brand-new citizen (with an id field) instead of editing.
-export default function PersonEditor({ personId, createMode = false, cityName = null, onClose, onSaved, onCreated, onDeleted }) {
+// `rosterName` is the BUILDING whose roster the new citizen can be added to
+// (rosters are per-building) — null when no building is open, which hides the
+// checkbox and creates the citizen into the shared library only.
+export default function PersonEditor({ personId, createMode = false, rosterName = null, onClose, onSaved, onCreated, onDeleted }) {
   const [form, setForm] = useState(createMode ? BLANK : null); // null until loaded
   const [newId, setNewId] = useState('');
-  const [addToCity, setAddToCity] = useState(!!cityName);
+  const [addToRoster, setAddToRoster] = useState(!!rosterName);
   const [loadError, setLoadError] = useState(null);
   const [mcpsText, setMcpsText] = useState('[]');
   const [confirming, setConfirming] = useState(false);
@@ -88,7 +91,7 @@ export default function PersonEditor({ personId, createMode = false, cityName = 
     try {
       if (createMode) {
         await api.createPerson({ id: newId.trim(), manifest, prompt: form.prompt });
-        onCreated?.(newId.trim(), addToCity && !!cityName);
+        onCreated?.(newId.trim(), addToRoster && !!rosterName);
       } else {
         await api.savePerson(personId, { manifest, prompt: form.prompt });
         onSaved?.();
@@ -149,10 +152,10 @@ export default function PersonEditor({ personId, createMode = false, cityName = 
                   onChange={(e) => { setNewId(e.target.value); setSaveError(null); }} />
               </label>
             )}
-            {createMode && cityName && (
+            {createMode && rosterName && (
               <label className="field-check">
-                <input type="checkbox" checked={addToCity} onChange={(e) => setAddToCity(e.target.checked)} />
-                <span>Add to {cityName}&apos;s roster now</span>
+                <input type="checkbox" checked={addToRoster} onChange={(e) => setAddToRoster(e.target.checked)} />
+                <span>Add to {rosterName}&apos;s roster now</span>
               </label>
             )}
             <label className="field">

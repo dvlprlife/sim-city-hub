@@ -1,3 +1,5 @@
+import { cityPeople } from '../lib/roster.js';
+
 // Left rail: the list of cities. Selecting one opens its interior.
 export default function CitySidebar({ cities, selectedCityId, onSelectCity }) {
   return (
@@ -12,7 +14,7 @@ export default function CitySidebar({ cities, selectedCityId, onSelectCity }) {
             >
               <span className="city-name">{c.name}</span>
               <span className="city-meta">
-                {(c.people?.length ?? 0)} 👤 · {(c.buildings?.length ?? 0)} 🏢
+                {cityPeople(c).length} 👤 · {(c.buildings?.length ?? 0)} 🏢
               </span>
             </button>
           </li>
