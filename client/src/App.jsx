@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from './hooks/useApi.js';
+import { useSunnysideAvailable } from './hooks/useSunnysideAvailable.js';
 import { useWebSocket } from './hooks/useWebSocket.js';
 import { useConversations } from './hooks/useConversations.js';
 import { useActiveRuns } from './hooks/useActiveRuns.js';
@@ -10,6 +11,9 @@ import CitySidebar from './components/CitySidebar.jsx';
 import CityMap from './components/CityMap.jsx';
 import CityBuildings from './components/CityBuildings.jsx';
 import CityInterior from './components/CityInterior.jsx';
+// Optional pixel-art Buildings view — lazy so its Sunnyside asset loading never
+// touches the default bundle / a fresh clone (assets are git-ignored, see README).
+const CityBuildingsPixel = lazy(() => import('./components/CityBuildingsPixel.jsx'));
 import PersonPicker from './components/PersonPicker.jsx';
 import PersonEditor from './components/PersonEditor.jsx';
 import AgentHistory from './components/AgentHistory.jsx';
@@ -47,6 +51,10 @@ export default function App() {
   const [creatingPerson, setCreatingPerson] = useState(false);
   const [creatingCity, setCreatingCity] = useState(false);
   const [creatingBuildingCityId, setCreatingBuildingCityId] = useState(null);
+  const [pixelView, setPixelView] = useState(null);   // null = auto (pixel when the pack is present)
+  const ssAvailable = useSunnysideAvailable();        // is the Sunnyside pack present?
+  // Default to the pixel-art view when the assets exist; the toggle overrides it.
+  const showPixel = ssAvailable === true && (pixelView === null ? true : pixelView);
   // A transient paper-plane courier that flies across the screen on a handoff.
   const [handoffFx, setHandoffFx] = useState(null);
   const handoffSeq = useRef(0);
@@ -309,14 +317,39 @@ export default function App() {
           )}
 
           {!person && city && !buildingId && (
-            <CityBuildings
-              city={city}
-              buildings={buildings}
-              selectedBuildingId={buildingId}
-              onSelectBuilding={selectBuilding}
-              buildingCounts={activeRuns.buildingCounts}
-              onAddBuilding={onAddBuilding}
-            />
+            <div className="map-stage">
+              {ssAvailable === true && (
+                <button
+                  type="button"
+                  className="map-stage-toggle"
+                  onClick={() => setPixelView(!showPixel)}
+                  title={showPixel ? 'Isometric view' : 'Pixel-art view'}
+                >
+                  {showPixel ? '◱ 2D' : '◰ pixel'}
+                </button>
+              )}
+              {showPixel ? (
+                <Suspense fallback={<div className="map-loading">Loading pixel town…</div>}>
+                  <CityBuildingsPixel
+                    city={city}
+                    buildings={buildings}
+                    selectedBuildingId={buildingId}
+                    onSelectBuilding={selectBuilding}
+                    buildingCounts={activeRuns.buildingCounts}
+                    onAddBuilding={onAddBuilding}
+                  />
+                </Suspense>
+              ) : (
+                <CityBuildings
+                  city={city}
+                  buildings={buildings}
+                  selectedBuildingId={buildingId}
+                  onSelectBuilding={selectBuilding}
+                  buildingCounts={activeRuns.buildingCounts}
+                  onAddBuilding={onAddBuilding}
+                />
+              )}
+            </div>
           )}
 
           {!person && city && buildingId && (

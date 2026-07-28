@@ -7,6 +7,15 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **Optional pixel-art Buildings view.** Inside a city you can now flip the
+  Buildings view between the isometric scene and a top-down **pixel-art town**
+  (a `◰ pixel` toggle, top-right) — each building is a house you click to enter,
+  with a blank lot to add one, drag-to-pan / scroll-to-zoom, and a house that
+  glows (with a hammering citizen) while its agent runs. The art is the
+  third-party **Sunnyside World** pack, which can't be redistributed, so it isn't
+  bundled: the view and its toggle only appear when the pack is installed locally,
+  and the app falls back to the isometric view otherwise (see the README for the
+  one-time download + `scripts/extract-sunnyside-room.cjs` setup).
 - **Citizens are now staffed per Building instead of per City.** Each building
   (workspace) carries its own ordered roster, so you can give a codebase exactly
   the team it needs rather than sharing one list across every project in the
