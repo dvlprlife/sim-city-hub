@@ -7,6 +7,14 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **The citizens view is now the building _and its yard_.** Entering a building
+  used to show a bare office floor; it now shows that roofless floor standing in
+  its own fenced lot — grass, trees, and a walkway out to the gate. Citizens
+  **stroll a looping path around the yard while they're idle** and take their desk
+  only while a run is in flight, so a glance tells you who is working and who is
+  free. Hovering a walker stops them, so they stay easy to click, and a finished
+  run's ✓/❗ bubble follows the agent back outside.
+
 - **Optional pixel-art Buildings view.** Inside a city you can now flip the
   Buildings view between the isometric scene and a top-down **pixel-art town**
   (a `◰ pixel` toggle, top-right) — each building is a house you click to enter,

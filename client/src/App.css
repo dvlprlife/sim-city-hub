@@ -301,6 +301,7 @@ body {
 .g-road  { background: radial-gradient(closest-side, #5c636b, #474d53); }
 .g-water { background: linear-gradient(150deg, #57a0cf 0%, #2f6fb0 100%); }
 .g-floor { background: linear-gradient(150deg, #c2a878 0%, #a98c5e 100%); }   /* office floor */
+.g-yardpath { background: linear-gradient(150deg, #b09a72 0%, #93805e 100%); } /* yard walkway */
 
 .scene-tree { position: absolute; width: 48px; height: auto; transform: translate(-50%, -80%); pointer-events: none; filter: drop-shadow(0 3px 2px rgba(0,0,0,0.4)); }
 
@@ -394,6 +395,43 @@ body {
 .wall-right { background: linear-gradient(180deg, #d3c8ac 0%, #b8aa86 100%); }
 .wall-left { background: linear-gradient(180deg, #c4b99d 0%, #a99c78 100%); }
 .office-wall::before { content: ''; position: absolute; left: 8%; right: 8%; top: 24%; height: 30%; background: repeating-linear-gradient(90deg, #a9d6ec 0 16px, #79b0cf 16px 20px); box-shadow: inset 0 0 0 1px rgba(0,0,0,0.15); }
+
+/* ---- The building's yard (citizens view) ----
+   The lot around the roofless office: a picket fence on the outer ring, an empty
+   desk left behind by whoever is outside, and citizens strolling a loop path. */
+
+/* Fence rails follow the iso axes: rows that run along +x lean one way, columns
+   along +y the other (atan(tileH/tileW) = 26.57deg for the 88x44 tile). */
+.lot-fence { position: absolute; left: 0; top: 0; width: 88px; height: 16px; transform: translate(-50%, -60%); pointer-events: none; }
+.lot-fence::before { content: ''; position: absolute; left: 0; right: 0; top: 3px; height: 3px; background: #8d6c46; box-shadow: 0 6px 0 #79593a; }
+.lot-fence::after { content: ''; position: absolute; left: 50%; top: 0; width: 4px; height: 16px; margin-left: -2px; background: #9b7850; border-radius: 1px; }
+.fence-back, .fence-front { transform: translate(-50%, -60%) skewY(26.57deg); }
+.fence-left, .fence-right { transform: translate(-50%, -60%) skewY(-26.57deg); }
+
+/* A desk with nobody at it — its citizen is out in the yard. */
+.lot-desk { position: absolute; width: 0; height: 0; pointer-events: none; opacity: 0.9; }
+
+/* Citizens strolling the yard: same motion-path technique as the town's
+   pedestrians, but each is a real button. Hovering (or focusing) PAUSES the walk
+   so a moving target stays easy to click. */
+.lot-walker {
+  position: absolute; top: 0; left: 0; width: 0; height: 0;
+  background: none; border: none; padding: 0; cursor: pointer; color: var(--text);
+  offset-rotate: 0deg; offset-anchor: 50% 88%; z-index: 400;
+  animation: road-travel var(--dur, 52s) linear var(--delay, 0s) infinite;
+}
+.lot-walker:hover, .lot-walker:focus-visible { animation-play-state: paused; }
+.lot-walker .iso-person { position: absolute; left: 50%; bottom: 0; transform: translateX(-50%); animation: ped-walk 0.7s ease-in-out infinite; transform-origin: 50% 100%; }
+.lot-walker:hover .iso-person, .lot-walker.sel .iso-person { filter: drop-shadow(0 0 7px var(--accent)); }
+.lot-walker-label {
+  position: absolute; left: 50%; top: 6px; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11px; font-weight: 700; opacity: 0.72;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+}
+.lot-walker:hover .lot-walker-label, .lot-walker.sel .lot-walker-label { opacity: 1; color: var(--accent); }
+@media (prefers-reduced-motion: reduce) {
+  .lot-walker, .lot-walker .iso-person { animation: none; }
+}
 
 /* "Thinking" bubble over an agent with an active run. */
 .think-bubble { position: absolute; left: 0; top: 0; transform: translate(-50%, -70px); display: flex; gap: 3px; align-items: center; padding: 4px 6px; background: #fff; border-radius: 9px; box-shadow: 0 2px 5px rgba(0,0,0,0.35); z-index: 1000; }

@@ -264,11 +264,16 @@ export function buildScene(count, { cols = 3, roads = true } = {}) {
   };
 }
 
-// Builds a building INTERIOR scene — an office floor with desks, no roads / cars
-// / pedestrians / scenery. Used by the citizens view (the "person screen"): each
-// agent sits at a desk. Desks are laid in tidy rows of paired pods (two adjacent
-// desks per pod, an aisle between pods and between rows); one empty desk is
-// always reserved for the "add citizen" lot.
+// Builds the BUILDING LOT scene — a roofless office floor with desks, standing in
+// its own fenced yard. Used by the citizens view (the "person screen"): each agent
+// owns a desk inside, and walks a looping path around the yard while idle (the
+// view seats them only while a run is in flight). Desks are laid in tidy rows of
+// paired pods (two adjacent desks per pod, an aisle between pods and between
+// rows); one empty desk is always reserved for the "add citizen" lot.
+//
+// Coordinates are YARD-relative: the building floor sits inset by YARD_M tiles on
+// every side, so tile (0,0) is the far corner of the grass, not of the floor.
+const YARD_M = 4;                      // tiles of yard around the building
 export function buildInterior(count, { perRow = 4 } = {}) {
   const items = Math.max(count, 0);
   const total = items + 1; // + the add lot
@@ -280,24 +285,37 @@ export function buildInterior(count, { perRow = 4 } = {}) {
     return [1 + Math.floor(c / 2) * 5 + (c % 2) * 2, 1 + r * 3];
   };
   const allCells = Array.from({ length: total }, (_, k) => deskCell(k));
-  const gridCols = Math.max(...allCells.map((c) => c[0])) + 2;
-  const gridRows = Math.max(...allCells.map((c) => c[1])) + 2;
+  const bCols = Math.max(...allCells.map((c) => c[0])) + 2;   // building footprint
+  const bRows = Math.max(...allCells.map((c) => c[1])) + 2;
+  const gridCols = bCols + YARD_M * 2;                        // whole lot
+  const gridRows = bRows + YARD_M * 2;
+  const inBuilding = (x, y) => x >= YARD_M && y >= YARD_M && x < YARD_M + bCols && y < YARD_M + bRows;
 
   const slots = [];
-  for (let k = 0; k < items; k += 1) { const [x, y] = deskCell(k); slots.push({ cx: x + 0.5, cy: y + 0.5 }); }
+  for (let k = 0; k < items; k += 1) { const [x, y] = deskCell(k); slots.push({ cx: YARD_M + x + 0.5, cy: YARD_M + y + 0.5 }); }
   const [ax, ay] = deskCell(items);
-  const addSlots = [{ cx: ax + 0.5, cy: ay + 0.5 }];
+  const addSlots = [{ cx: YARD_M + ax + 0.5, cy: YARD_M + ay + 0.5 }];
 
-  // Decorative potted plants in the four corners (even-coord tiles, never a desk).
+  // Decorative potted plants in the four INDOOR corners (never a desk).
   const propCells = [
-    { cx: 0.5, cy: 0.5 },
-    { cx: gridCols - 0.5, cy: 0.5 },
-    { cx: 0.5, cy: gridRows - 0.5 },
-    { cx: gridCols - 0.5, cy: gridRows - 0.5 },
+    { cx: YARD_M + 0.5, cy: YARD_M + 0.5 },
+    { cx: YARD_M + bCols - 0.5, cy: YARD_M + 0.5 },
+    { cx: YARD_M + 0.5, cy: YARD_M + bRows - 0.5 },
+    { cx: YARD_M + bCols - 0.5, cy: YARD_M + bRows - 0.5 },
   ];
 
+  // The walkway leaves the building's front corner and runs straight down-screen
+  // (x and y both +1 per step is vertical in iso) to the gate in the fence.
+  const pathCells = new Set();
+  for (let k = 1; k <= YARD_M; k += 1) pathCells.add(`${YARD_M + bCols - 1 + k},${YARD_M + bRows - 1 + k}`);
+
   const tiles = [];
-  for (let y = 0; y < gridRows; y += 1) for (let x = 0; x < gridCols; x += 1) tiles.push({ x, y, type: 'floor' });
+  for (let y = 0; y < gridRows; y += 1) {
+    for (let x = 0; x < gridCols; x += 1) {
+      const type = inBuilding(x, y) ? 'floor' : (pathCells.has(`${x},${y}`) ? 'yardpath' : 'grass');
+      tiles.push({ x, y, type });
+    }
+  }
 
   const raw = tiles.map((t) => isoToScreen([t.x, t.y], { tileW: TILE_W, tileH: TILE_H }));
   const minLeft = Math.min(...raw.map((p) => p.left));
@@ -313,20 +331,71 @@ export function buildInterior(count, { perRow = 4 } = {}) {
     return { ...t, left: p.left + offX, top: p.top + offY, z: t.x + t.y };
   });
 
-  // Two back walls rising from the floor's far edges (the iso "room"). Each is a
+  // Two back walls rising from the FLOOR's far edges (the iso "room"). Each is a
   // parallelogram given by its 4 screen-space corners; the view clips a div to it.
   const tileBox = (x, y) => { const p = isoToScreen([x, y], { tileW: TILE_W, tileH: TILE_H }); return { left: p.left + offX, top: p.top + offY }; };
   const WH = 66; // wall height (px)
-  const t00 = tileBox(0, 0);
-  const tR = tileBox(gridCols - 1, 0);
-  const tL = tileBox(0, gridRows - 1);
+  const t00 = tileBox(YARD_M, YARD_M);
+  const tR = tileBox(YARD_M + bCols - 1, YARD_M);
+  const tL = tileBox(YARD_M, YARD_M + bRows - 1);
   const topV = { x: t00.left + TILE_W / 2, y: t00.top };
   const rightV = { x: tR.left + TILE_W, y: tR.top + TILE_H / 2 };
   const leftV = { x: tL.left, y: tL.top + TILE_H / 2 };
+  // Walls take the painter's-order z of the building's BACK corner — the tile they
+  // stand on. That puts them over the grass behind, and under everything in front
+  // (desks, plants, the yard trees flanking the building), which is what reads
+  // correctly. Strollers are the one exception: they ride a motion path, so their
+  // z is fixed and they pass in front of a wall even when rounding the back. The
+  // walls are low and the moment is brief — much less jarring than a wall
+  // permanently covering a tree that stands in front of it.
+  const wallZ = place(YARD_M, YARD_M).z;
   const walls = [
-    { side: 'right', pts: [topV, rightV, { x: rightV.x, y: rightV.y - WH }, { x: topV.x, y: topV.y - WH }] },
-    { side: 'left', pts: [topV, leftV, { x: leftV.x, y: leftV.y - WH }, { x: topV.x, y: topV.y - WH }] },
+    { side: 'right', z: wallZ, pts: [topV, rightV, { x: rightV.x, y: rightV.y - WH }, { x: topV.x, y: topV.y - WH }] },
+    { side: 'left', z: wallZ, pts: [topV, leftV, { x: leftV.x, y: leftV.y - WH }, { x: topV.x, y: topV.y - WH }] },
   ];
+
+  // Fence posts around the lot's outer ring, with a gate where the walkway exits.
+  const gate = `${gridCols - 1},${gridRows - 1}`;
+  const fence = [];
+  for (let x = 0; x < gridCols; x += 1) {
+    for (const y of [0, gridRows - 1]) {
+      if (`${x},${y}` === gate) continue;
+      fence.push({ ...place(x + 0.5, y + 0.5), side: y === 0 ? 'back' : 'front' });
+    }
+  }
+  for (let y = 1; y < gridRows - 1; y += 1) {
+    for (const x of [0, gridCols - 1]) {
+      if (`${x},${y}` === gate) continue;
+      fence.push({ ...place(x + 0.5, y + 0.5), side: x === 0 ? 'left' : 'right' });
+    }
+  }
+
+  // Yard scenery on the grass. Kept to ring 1 — just inside the fence and OUTSIDE
+  // the stroll loop (inset 1.5) — so nobody walks through a tree and no canopy
+  // overhangs the floor. Never on the walkway or under the building.
+  const yardTrees = [];
+  const treeCells = [
+    [1, 1], [gridCols - 2, 1], [1, gridRows - 2], [gridCols - 2, gridRows - 2],
+    [1, Math.floor(gridRows / 2)], [gridCols - 2, Math.floor(gridRows / 2)],
+    [Math.floor(gridCols / 2), 1],
+  ];
+  for (const [x, y] of treeCells) {
+    if (x < 0 || y < 0 || x >= gridCols || y >= gridRows) continue;
+    if (inBuilding(x, y) || pathCells.has(`${x},${y}`)) continue;
+    yardTrees.push(place(x + 0.5, y + 0.5));
+  }
+
+  // A closed loop through the yard, encircling the building — walkers follow it as
+  // a CSS motion path (offset-path), so they round the corners smoothly and never
+  // jump back at the end. Straight lines in tile space stay straight on screen, so
+  // the four corners are enough. Inset half a tile off the fence.
+  const ringPts = [
+    [YARD_M - 1.5, YARD_M - 1.5],
+    [YARD_M + bCols + 0.5, YARD_M - 1.5],
+    [YARD_M + bCols + 0.5, YARD_M + bRows + 0.5],
+    [YARD_M - 1.5, YARD_M + bRows + 0.5],
+  ].map(([cx, cy]) => { const p = place(cx, cy); return `${Math.round(p.left)} ${Math.round(p.top)}`; });
+  const walkLoop = `M ${ringPts.join(' L ')} Z`;
 
   const maxLeft = Math.max(...ground.map((c) => c.left));
   const maxTop = Math.max(...ground.map((c) => c.top));
@@ -336,7 +405,9 @@ export function buildInterior(count, { perRow = 4 } = {}) {
     addSlots: addSlots.map((s) => place(s.cx, s.cy)),
     props: propCells.map((s) => place(s.cx, s.cy)),
     walls,
-    trees: [],
+    fence,
+    walkLoop,
+    trees: yardTrees,      // IsoScene already paints scene.trees with the iso tree
     cars: [],
     peds: [],
     width: maxLeft + TILE_W + PAD,
