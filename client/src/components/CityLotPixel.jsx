@@ -51,6 +51,12 @@ const manifest = {
 };
 const CH = { w: 96, h: 64 };
 const STATE = { idle: 9, walk: 8, ham: 23 };
+// The character occupies only art rows 23..38 of its 64px frame — measured across
+// every walk frame — so the frame's top edge sits ~23 art px ABOVE the head. A
+// name placed relative to the frame therefore floats well clear of the sprite;
+// these anchor it to the head instead.
+const HEAD_ART_Y = 23;                       // first opaque row in a human strip
+const LABEL_GAP = 26;                        // label box height + a little air
 const FR = { tree1: { n: 4, w: 32, h: 34 }, tree2: { n: 4, w: 28, h: 43 } };
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -157,14 +163,13 @@ export default function CityLotPixel({ cityId, city, people, selectedPersonId, o
         X.fillStyle = running > 0 ? '#ff6b6b' : '#ffd166'; X.fillText(badge, cx + X.measureText(text).width / 2, topY + 10);
       } else { X.fillStyle = '#eaf3ea'; X.fillText(text, cx, topY + 10); }
     }
-    // `y` is the citizen's FEET. The name rides at y - 60*S — the same offset the
-    // pixel town uses — which clears the top of the 64px-tall frame, so the label
-    // sits above the head instead of across the body.
+    // `y` is the citizen's FEET. The name sits just above the HEAD — the frame is
+    // much taller than the art, so anchoring to the frame leaves it floating.
     function citizen(state, t, x, y, flip, fps, name, counts) {
       const f = anim(STATE[state], fps, t);
       const footY = y + 4 * S;
       for (const part of ['base', 'hair', 'tools']) drawFrame(IMG[`${state}_${part}`], CH.w, CH.h, f, x, footY, S, flip);
-      if (name) label(name, x, y - 60 * S, counts);
+      if (name) label(name, x, footY - (CH.h - HEAD_ART_Y) * S - LABEL_GAP, counts);
     }
 
     // ---- scene ----
