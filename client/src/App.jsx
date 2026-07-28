@@ -11,6 +11,9 @@ import CitySidebar from './components/CitySidebar.jsx';
 import CityMap from './components/CityMap.jsx';
 import CityBuildings from './components/CityBuildings.jsx';
 import CityInterior from './components/CityInterior.jsx';
+// The citizens view's pixel mode, drawn from the same Sunnyside pack as the
+// pixel Buildings view. Lazy for the same reason (git-ignored optional assets).
+const CityLotPixel = lazy(() => import('./components/CityLotPixel.jsx'));
 // Optional pixel-art Buildings view — lazy so its Sunnyside asset loading never
 // touches the default bundle / a fresh clone (assets are git-ignored, see README).
 const CityBuildingsPixel = lazy(() => import('./components/CityBuildingsPixel.jsx'));
@@ -52,9 +55,13 @@ export default function App() {
   const [creatingCity, setCreatingCity] = useState(false);
   const [creatingBuildingCityId, setCreatingBuildingCityId] = useState(null);
   const [pixelView, setPixelView] = useState(null);   // null = auto (pixel when the pack is present)
+  // Citizens view: the SAME two options as the Buildings view, meaning the same
+  // things — pixel = the Sunnyside lot, 2D = the isometric office floor.
+  const [pixelLotView, setPixelLotView] = useState(null);
   const ssAvailable = useSunnysideAvailable();        // is the Sunnyside pack present?
   // Default to the pixel-art view when the assets exist; the toggle overrides it.
   const showPixel = ssAvailable === true && (pixelView === null ? true : pixelView);
+  const showPixelLot = ssAvailable === true && (pixelLotView === null ? true : pixelLotView);
   // A transient paper-plane courier that flies across the screen on a handoff.
   const [handoffFx, setHandoffFx] = useState(null);
   const handoffSeq = useRef(0);
@@ -353,16 +360,45 @@ export default function App() {
           )}
 
           {!person && city && buildingId && (
-            <CityInterior
-              cityId={city.id}
-              city={city}
-              people={people}
-              selectedPersonId={personId}
-              onSelectPerson={selectPerson}
-              personCounts={activeRuns.personCounts}
-              emotes={emotes.emotes}
-              onAddPerson={onAddPerson}
-            />
+            <div className="map-stage">
+              {/* Same toggle, same order, same meaning as the Buildings view
+                  above: pixel = Sunnyside art, 2D = the isometric scene. */}
+              {ssAvailable === true && (
+                <button
+                  type="button"
+                  className="map-stage-toggle"
+                  onClick={() => setPixelLotView(!showPixelLot)}
+                  title={showPixelLot ? 'Isometric view' : 'Pixel-art view'}
+                >
+                  {showPixelLot ? '◱ 2D' : '◰ pixel'}
+                </button>
+              )}
+              {showPixelLot ? (
+                <Suspense fallback={<div className="map-loading">Loading the lot…</div>}>
+                  <CityLotPixel
+                    cityId={city.id}
+                    city={city}
+                    people={people}
+                    selectedPersonId={personId}
+                    onSelectPerson={selectPerson}
+                    personCounts={activeRuns.personCounts}
+                    emotes={emotes.emotes}
+                    onAddPerson={onAddPerson}
+                  />
+                </Suspense>
+              ) : (
+                <CityInterior
+                  cityId={city.id}
+                  city={city}
+                  people={people}
+                  selectedPersonId={personId}
+                  onSelectPerson={selectPerson}
+                  personCounts={activeRuns.personCounts}
+                  emotes={emotes.emotes}
+                  onAddPerson={onAddPerson}
+                />
+              )}
+            </div>
           )}
 
           {person && (

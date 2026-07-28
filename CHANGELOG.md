@@ -7,6 +7,15 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 
 ## [Unreleased]
 
+- **The citizens view now has two views, like the Buildings view does.** The
+  default is a new **top-down view of the building's lot**, drawn in the same flat
+  style as the 2D town: the building sits in a fenced grassy lot with a driveway
+  out to the road, trees and street lamps, and it's **roofless so you can see the
+  desks inside** — the roof lifts away as you arrive. Idle agents **walk the
+  grounds** and take their desk only while a run is in flight; hovering one stops
+  them so they stay easy to click. The **`◰ pixel` toggle** switches back to the
+  original isometric office floor, which is unchanged.
+
 - **Optional pixel-art Buildings view.** Inside a city you can now flip the
   Buildings view between the isometric scene and a top-down **pixel-art town**
   (a `◰ pixel` toggle, top-right) — each building is a house you click to enter,
