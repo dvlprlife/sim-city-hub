@@ -55,6 +55,31 @@ export default function CityInterior({ cityId, city, people, selectedPersonId, o
               <span className="pot" />
             </span>
           ))}
+          {/* Indoor furnishing under the roof (cabinets along the back, a rug). */}
+          {(scene.furniture || []).map((f, i) => (
+            <span
+              key={`furn${i}`}
+              className={`office-${f.kind}`}
+              aria-hidden="true"
+              style={{ left: f.left + TILE_W / 2, top: f.top + TILE_H / 2, zIndex: f.z }}
+            />
+          ))}
+          {/* The roof, lifted away on entry to reveal the floor below. Purely
+              decorative and non-interactive, so it can never eat a desk click. */}
+          {scene.roof && (() => {
+            const r = scene.roof;
+            const xs = r.pts.map((p) => p.x); const ys = r.pts.map((p) => p.y);
+            const minX = Math.min(...xs); const minY = Math.min(...ys);
+            const wd = Math.max(...xs) - minX; const ht = Math.max(...ys) - minY;
+            const poly = r.pts.map((p) => `${(((p.x - minX) / wd) * 100).toFixed(2)}% ${(((p.y - minY) / ht) * 100).toFixed(2)}%`).join(', ');
+            return (
+              <span
+                className="office-roof"
+                aria-hidden="true"
+                style={{ left: minX, top: minY, width: wd, height: ht, zIndex: r.z, clipPath: `polygon(${poly})` }}
+              />
+            );
+          })()}
           {/* Fence around the lot, with a gap where the walkway reaches the gate. */}
           {(scene.fence || []).map((f, i) => (
             <span

@@ -354,6 +354,35 @@ export function buildInterior(count, { perRow = 4 } = {}) {
     { side: 'left', z: wallZ, pts: [topV, leftV, { x: leftV.x, y: leftV.y - WH }, { x: topV.x, y: topV.y - WH }] },
   ];
 
+  // The ROOF: the footprint diamond, lifted to the top of the walls. The view
+  // shows it first, then lifts it away to reveal the furnished floor — the
+  // roof-off reveal a top-down game does when you step indoors. It has to paint
+  // over everything it covers, hence a z above the strollers.
+  const tBR = tileBox(YARD_M + bCols - 1, YARD_M + bRows - 1);
+  const bottomV = { x: tBR.left + TILE_W / 2, y: tBR.top + TILE_H };
+  // The roof must hide the whole building while it is on, and the building is the
+  // floor diamond PLUS the wall height above it. A diamond lifted by the wall
+  // height leaves a band of floor showing along the front edges (there are no
+  // front walls to hide it), so the roof is the union of the footprint and the
+  // lifted footprint: a hexagon — the lifted back/side corners, then down the
+  // front-right and front-left eaves to the unlifted front corner.
+  const lift = (p) => ({ x: p.x, y: p.y - WH });
+  const roof = {
+    z: 900,
+    pts: [lift(topV), lift(rightV), rightV, bottomV, leftV, lift(leftV)],
+  };
+
+  // Indoor furnishing, so the floor under the lifted roof reads as a room rather
+  // than a bare pad. The back row (building-local y = 0) is always free — desks
+  // start at y = 1 — so cabinets line it; the rug goes on the open floor in front.
+  const furniture = [];
+  for (let x = 1; x < bCols - 1; x += 3) {
+    furniture.push({ kind: 'cabinet', ...place(YARD_M + x + 0.5, YARD_M + 0.5) });
+  }
+  // Tile CENTRES are x+0.5 — flooring first keeps the rug on a tile for an even
+  // bCols instead of straddling the seam between two.
+  furniture.push({ kind: 'rug', ...place(YARD_M + Math.floor(bCols / 2) + 0.5, YARD_M + bRows - 0.5) });
+
   // Fence posts around the lot's outer ring, with a gate where the walkway exits.
   const gate = `${gridCols - 1},${gridRows - 1}`;
   const fence = [];
@@ -405,6 +434,8 @@ export function buildInterior(count, { perRow = 4 } = {}) {
     addSlots: addSlots.map((s) => place(s.cx, s.cy)),
     props: propCells.map((s) => place(s.cx, s.cy)),
     walls,
+    roof,
+    furniture,
     fence,
     walkLoop,
     trees: yardTrees,      // IsoScene already paints scene.trees with the iso tree

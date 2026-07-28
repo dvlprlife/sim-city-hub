@@ -408,6 +408,35 @@ body {
 .fence-back, .fence-front { transform: translate(-50%, -60%) skewY(26.57deg); }
 .fence-left, .fence-right { transform: translate(-50%, -60%) skewY(-26.57deg); }
 
+/* The roof, shown for a beat when you enter the building and then lifted away to
+   reveal the floor — the roof-off reveal a top-down game does when you step
+   indoors. Two clipped slopes meeting at the ridge read as a gable. Never
+   interactive: it must not swallow a click on a desk underneath. */
+.office-roof {
+  position: absolute; pointer-events: none;
+  animation: roof-lift 1.05s cubic-bezier(0.33, 0, 0.2, 1) 0.45s both;
+}
+/* One slab clipped to the building's silhouette; the gradient fakes the two
+   slopes of a gable so it still reads as a pitched roof from above. */
+.office-roof { background: linear-gradient(163deg, #9cc0de 0%, #7ba7cb 44%, #5b84ab 46%, #43678c 100%); }
+.office-roof::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(102deg, rgba(0,0,0,0.13) 0 3px, transparent 3px 11px);
+}
+@keyframes roof-lift {
+  0% { transform: translateY(0) scale(1); opacity: 1; }
+  55% { opacity: 1; }
+  100% { transform: translateY(-96px) scale(1.06); opacity: 0; }
+}
+/* No motion: skip straight to the revealed interior rather than flashing a roof. */
+@media (prefers-reduced-motion: reduce) { .office-roof { display: none; } }
+
+/* Indoor furnishing revealed under the roof. */
+.office-cabinet { position: absolute; left: 0; top: 0; transform: translate(-50%, -78%); width: 40px; height: 26px; pointer-events: none; background: linear-gradient(#9a6f43, #7c552f); border-radius: 3px; box-shadow: 0 5px 0 #5d3f21, 0 3px 5px rgba(0,0,0,0.32); }
+.office-cabinet::after { content: ''; position: absolute; left: 4px; right: 4px; top: 7px; height: 2px; background: rgba(0,0,0,0.28); box-shadow: 0 8px 0 rgba(0,0,0,0.28); }
+/* Sized to one tile so it never spills past the floor's edge. */
+.office-rug { position: absolute; left: 0; top: 0; transform: translate(-50%, -50%); width: 84px; height: 42px; pointer-events: none; clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); background: repeating-conic-gradient(from 45deg, #9c4b45 0deg 90deg, #8a403b 90deg 180deg); opacity: 0.85; }
+
 /* A desk with nobody at it — its citizen is out in the yard. */
 .lot-desk { position: absolute; width: 0; height: 0; pointer-events: none; opacity: 0.9; }
 

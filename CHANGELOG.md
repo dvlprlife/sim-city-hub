@@ -8,8 +8,11 @@ release time (see [`agents/RELEASE.md`](agents/RELEASE.md)).
 ## [Unreleased]
 
 - **The citizens view is now the building _and its yard_.** Entering a building
-  used to show a bare office floor; it now shows that roofless floor standing in
-  its own fenced lot — grass, trees, and a walkway out to the gate. Citizens
+  used to show a bare office floor; it now shows the building standing in its own
+  fenced lot — grass, trees, and a walkway out to the gate. The building wears a
+  **roof, which lifts away as you enter** to reveal the furnished floor inside
+  (desks, cabinets, a rug), the way a top-down game opens a house up when you step
+  indoors. Citizens
   **stroll a looping path around the yard while they're idle** and take their desk
   only while a run is in flight, so a glance tells you who is working and who is
   free. Hovering a walker stops them, so they stay easy to click, and a finished
