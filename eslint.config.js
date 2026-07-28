@@ -31,6 +31,16 @@ export default [
     },
   },
 
+  // Node tooling scripts written as CommonJS (.cjs) — require/__dirname/module.
+  {
+    files: ['**/*.cjs'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'commonjs',
+      globals: { ...globals.node },
+    },
+  },
+
   // Frontend — browser + React hooks rules.
   {
     files: ['client/src/**/*.{js,jsx}'],

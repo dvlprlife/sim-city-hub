@@ -160,6 +160,41 @@ Project conventions live in [`CLAUDE.md`](CLAUDE.md). Issues flow through an
 agent-driven pipeline documented in [`agents/WORKFLOW.md`](agents/WORKFLOW.md)
 (`repo-check` → `issue-planner` → `issue-worker` → `pr-reviewer`).
 
+## Assets & credits
+
+The bundled isometric sprites are **Kenney** CC0 art (public domain) in
+`client/public/assets/`.
+
+An **experimental pixel-art town view** (an optional top-down skin of a city's
+Buildings view) uses the **Sunnyside World** asset pack by **Daniel Diggle**.
+That pack is **not bundled with this repo** — its licence allows use in projects
+but **prohibits redistributing the assets**, so they're kept out of version
+control (the `client/public/assets/sunnyside/` folder is git-ignored). The view
+is fully optional: without the pack the app runs exactly as before, and when the
+pack is present a **`◰ pixel`** toggle appears in a city's Buildings view to
+switch between the isometric and pixel-art renderings. To enable it locally:
+
+1. Download the pack (pay-what-you-want, free option available) from
+   **https://danieldiggle.itch.io/sunnyside** and unzip it anywhere.
+2. Run the one-time setup, pointing it at the unzipped pack folder (the one that
+   contains `Sunnyside_World_Assets/` and `Sunnyside_World_Gamemaker/`):
+
+   ```bash
+   node scripts/extract-sunnyside-room.cjs <path-to-unzipped-pack>
+   ```
+
+   That copies the exact sprites the view needs into
+   `client/public/assets/sunnyside/` and generates `room1.json` (the town layout,
+   harvested from the pack's GameMaker demo room — layout data, not art). Then
+   restart the dev server (or rebuild). Inside a city, the Buildings view now
+   defaults to the pixel-art town, with a **`◱ 2D`** toggle to switch back to the
+   isometric scene. Everything under `client/public/assets/sunnyside/` stays
+   git-ignored.
+
+Sunnyside is under its own custom licence: commercial use is allowed and credit
+is appreciated; redistribution, reselling, and AI-training use are not. The MIT
+licence below covers this project's **code only**, not third-party assets.
+
 ## License
 
 [MIT](LICENSE)

@@ -22,6 +22,11 @@ export default function PersonPicker({
     <div className="picker">
       <div className="picker-head">Workspace</div>
       <select aria-label="Workspace" value={selectedBuildingId || ''} onChange={(e) => onSelectBuilding(e.target.value)}>
+        {/* Entering a city selects no building, and a select whose value matches
+            no option renders the FIRST one — which would claim a workspace is
+            picked while the roster below is empty. An explicit placeholder keeps
+            the control honest until one is chosen. */}
+        {!selectedBuildingId && <option value="">(pick a building…)</option>}
         {(buildings || []).map((b) => (
           <option key={b.id} value={b.id}>{b.name}</option>
         ))}

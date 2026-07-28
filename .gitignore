@@ -49,3 +49,11 @@ GETTING_STARTED.md
 # blueprint + bootstrap prompt for this type of project lives here so it can be
 # maintained without committing it. CLAUDE.md is the authoritative in-repo summary.
 .meta/
+
+# Sunnyside World asset pack + its prototype — LOCAL-ONLY. Its custom licence
+# forbids redistribution, so unlike the Kenney CC0 kits these must NEVER be
+# committed to this public repo. (https://danieldiggle.itch.io/sunnyside)
+/client/public/assets/sunnyside/
+/client/public/sunnyside-proto.html
+/client/public/ss-grid.html
+/client/public/ss-room.html
