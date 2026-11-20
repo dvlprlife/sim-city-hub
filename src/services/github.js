@@ -7,7 +7,7 @@
 import { spawn } from 'node:child_process';
 import { writeFileSync, unlink, existsSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 import { agentTmpFile } from './agent/tmp.js';
 
 const PROTECTED = new Set(['main', 'master']);

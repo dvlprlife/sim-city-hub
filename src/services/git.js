@@ -1,6 +1,6 @@
 // Thin wrapper over simple-git for the git status/diff routes. Every call is
 // scoped to a building's absolutePath (the repo the agent is working in).
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 
 async function open(repoPath) {
   const git = simpleGit(repoPath);

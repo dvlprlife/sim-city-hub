@@ -3,7 +3,7 @@
 // it does NOT enumerate the filesystem (no listing), so there's no traversal
 // surface beyond confirming a single path the user typed.
 import { existsSync, statSync } from 'node:fs';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 
 export async function validatePath(p) {
   const path = typeof p === 'string' ? p.trim() : '';
