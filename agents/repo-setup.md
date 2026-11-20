@@ -1,20 +1,23 @@
 # Repo Setup Runbook
 
-How to bootstrap a new GitHub repository to match the **AL-EventLens model** —
-the template all `dvlprlife` repos mirror (labels, agent pipeline, CI, and
-**branch-protection rules**). Run this once per new repo, or to repair an
-existing one. Everything here is idempotent: re-running skips what already
-exists.
+How to bootstrap a new GitHub repository to match the template all `dvlprlife`
+repos mirror (labels, agent pipeline, CI, and **branch-protection rules**). Run
+this once per new repo, or to repair an existing one. Everything here is
+idempotent: re-running skips what already exists.
 
-> The model repo is [`dvlprlife/AL-EventLens`](https://github.com/dvlprlife/AL-EventLens).
+> Two model repos, one per concern:
+> - **Ruleset and merge settings (§2, §3):** [`dvlprlife/mantis-prawny`](https://github.com/dvlprlife/mantis-prawny).
+> - **CI and agent pipeline files (§4, §5):** [`dvlprlife/AL-EventLens`](https://github.com/dvlprlife/AL-EventLens).
+>
 > Sibling docs: label set in [`repo-check.md`](repo-check.md), the lifecycle in
 > [`WORKFLOW.md`](WORKFLOW.md), releases in [`RELEASE.md`](RELEASE.md).
 
 Set the target once (bash) and reuse it below:
 
 ```bash
-REPO=dvlprlife/<new-repo>        # e.g. dvlprlife/sim-city-hub
-MODEL=dvlprlife/AL-EventLens     # the template to copy from
+REPO=dvlprlife/<new-repo>                # e.g. dvlprlife/sim-city-hub
+RULES_MODEL=dvlprlife/mantis-prawny      # ruleset + merge settings to copy (§2, §3)
+MODEL=dvlprlife/AL-EventLens             # CI + agent files to copy (§4, §5)
 ```
 
 ---
@@ -55,27 +58,29 @@ ruleset** named `main-pr`. Recreate it on the new repo:
 
 ```bash
 # Inspect the model's ruleset to confirm it hasn't drifted:
-RID=$(gh api repos/$MODEL/rulesets -q '.[] | select(.name=="main-pr") | .id')
-gh api repos/$MODEL/rulesets/$RID
+RID=$(gh api repos/$RULES_MODEL/rulesets -q '.[] | select(.name=="main-pr") | .id')
+gh api repos/$RULES_MODEL/rulesets/$RID
 ```
 
 What `main-pr` enforces (on `main` and `release/*`):
 
 - **No branch deletion** (`deletion`) and **no force-push** (`non_fast_forward`).
 - **Pull request required** before merge: **1 approving review**, **dismiss stale
-  reviews on push**, **require conversation resolution**. Merge methods:
-  merge / squash / rebase all allowed.
-- **Required status checks** must pass, **strict** (branch must be up to date
-  before merge).
-- **Bypass:** the **Repository Admin** role (`actor_id: 5`) is `exempt` — so the
-  owner/admin can still merge directly (this is what lets the autonomous
-  auto-merge of clean+green PRs work; PRs from the owner can't self-approve under
-  the PR rule, and admin bypass covers that).
+  reviews on push**, **require conversation resolution**, and extra approval for
+  unattributed changes. Merge methods: merge / squash / rebase all allowed.
+- **Required status checks** must pass. **Not strict:** the branch does not have
+  to be up to date with `main` before merge, so a PR is not blocked just because
+  another PR landed first.
+- **Bypass:** the **Repository Admin** role (`actor_id: 5`) with bypass mode
+  `always` — the owner/admin can still merge, and GitHub shows the merge as a
+  deliberate bypass. This is what lets a solo owner merge their own PRs: they
+  can't self-approve under the PR rule, and the admin bypass covers that.
 
 ### ⚠️ The one field you must adapt per repo: required status check contexts
 
 The required check **context strings must match the repo's actual check-run
-names**, or `strict` policy makes every PR permanently unmergeable. They differ
+names**. A required context that no job ever reports stays pending forever, so
+every PR is permanently unmergeable (short of the admin bypass). They differ
 when CI uses a matrix:
 
 - AL-EventLens' `build` job is single-OS → context is just **`build`**.
@@ -108,16 +113,17 @@ cat > /tmp/main-pr-ruleset.json <<'JSON'
         "require_code_owner_review": false,
         "require_last_push_approval": false,
         "required_review_thread_resolution": true,
+        "require_extra_approval_for_unattributed_changes": true,
         "allowed_merge_methods": ["merge", "squash", "rebase"] } },
     { "type": "required_status_checks", "parameters": {
-        "strict_required_status_checks_policy": true,
+        "strict_required_status_checks_policy": false,
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           { "context": "build (ubuntu-latest)" },
           { "context": "build (windows-latest)" }
         ] } }
   ],
-  "bypass_actors": [ { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "exempt" } ]
+  "bypass_actors": [ { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always" } ]
 }
 JSON
 
@@ -138,19 +144,20 @@ gh api repos/$REPO/rulesets -q '.[] | .name + " (" + .enforcement + ")"'
 
 ## 3. Repository merge settings
 
-Match the model's merge configuration:
+Match the model's merge configuration. Merged head branches are deleted
+automatically:
 
 ```bash
 gh api -X PATCH repos/$REPO \
   -F allow_squash_merge=true -F allow_merge_commit=true -F allow_rebase_merge=true \
-  -F allow_auto_merge=false -F delete_branch_on_merge=false -F allow_update_branch=false \
+  -F allow_auto_merge=false -F delete_branch_on_merge=true -F allow_update_branch=false \
   -f squash_merge_commit_title=COMMIT_OR_PR_TITLE -f squash_merge_commit_message=COMMIT_MESSAGES
 ```
 
 Confirm against the model:
 
 ```bash
-gh api repos/$MODEL -q '{squash:.allow_squash_merge,merge:.allow_merge_commit,rebase:.allow_rebase_merge,autoMerge:.allow_auto_merge,delBranch:.delete_branch_on_merge}'
+gh api repos/$RULES_MODEL -q '{squash:.allow_squash_merge,merge:.allow_merge_commit,rebase:.allow_rebase_merge,autoMerge:.allow_auto_merge,delBranch:.delete_branch_on_merge}'
 gh api repos/$REPO  -q '{squash:.allow_squash_merge,merge:.allow_merge_commit,rebase:.allow_rebase_merge,autoMerge:.allow_auto_merge,delBranch:.delete_branch_on_merge}'
 ```
 
